@@ -19,6 +19,8 @@ class AppConstants {
   static const String prefProfileTitle = 'profile_title';
   static const String prefProfileBio = 'profile_bio';
   static const String prefSeenCoach = 'seen_home_coach';
+  static const String prefCardStyle = 'card_surface_style';
+  static const String prefReduceMotion = 'reduce_motion_enabled';
 
   static const List<Color> primarySwatches = [
     Color(0xFF2BAA7D),

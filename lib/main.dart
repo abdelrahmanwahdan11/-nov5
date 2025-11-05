@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'controllers/budgets_controller.dart';
+import 'controllers/display_controller.dart';
 import 'controllers/locale_controller.dart';
 import 'controllers/profile_controller.dart';
 import 'controllers/search_controller.dart';
@@ -39,6 +40,7 @@ Future<void> main() async {
   final sessionController = await SessionController.load();
   final profileController = await ProfileController.load();
   final walletController = await WalletController.load();
+  final displayController = await DisplayController.load();
 
   await transactionsController.updateLocale(localeController.locale.value);
 
@@ -51,6 +53,7 @@ Future<void> main() async {
     sessionController: sessionController,
     profileController: profileController,
     walletController: walletController,
+    displayController: displayController,
   ));
 }
 
@@ -65,6 +68,7 @@ class MawaidApp extends StatefulWidget {
     required this.sessionController,
     required this.profileController,
     required this.walletController,
+    required this.displayController,
   });
 
   final ThemeController themeController;
@@ -75,6 +79,7 @@ class MawaidApp extends StatefulWidget {
   final SessionController sessionController;
   final ProfileController profileController;
   final WalletController walletController;
+  final DisplayController displayController;
 
   @override
   State<MawaidApp> createState() => _MawaidAppState();
@@ -107,6 +112,7 @@ class _MawaidAppState extends State<MawaidApp> {
     widget.sessionController.dispose();
     widget.profileController.dispose();
     widget.walletController.dispose();
+    widget.displayController.dispose();
     super.dispose();
   }
 
@@ -233,6 +239,7 @@ class _MawaidAppState extends State<MawaidApp> {
                       sessionController: widget.sessionController,
                       profileController: widget.profileController,
                       walletController: widget.walletController,
+                      displayController: widget.displayController,
                       child: child ?? const SizedBox.shrink(),
                     );
                   },

@@ -3,9 +3,11 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../controllers/display_controller.dart';
 import '../../controllers/wallet_controller.dart';
-import '../../data/models/wallet_card.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/utils/app_scope.dart';
+import '../../data/models/wallet_card.dart';
 import 'sensitive_text.dart';
 
 class WalletCardCarousel extends StatefulWidget {
@@ -26,6 +28,8 @@ class WalletCardCarousel extends StatefulWidget {
 
 class _WalletCardCarouselState extends State<WalletCardCarousel> {
   late final PageController _pageController;
+  late DisplayController _displayController;
+  bool _didAttachDisplay = false;
 
   @override
   void initState() {
@@ -38,11 +42,24 @@ class _WalletCardCarouselState extends State<WalletCardCarousel> {
     widget.controller.activeCardIndex.addListener(_handleActiveIndexChange);
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_didAttachDisplay) {
+      _displayController = AppScope.of(context).displayController;
+      _didAttachDisplay = true;
+    }
+  }
+
   void _handleActiveIndexChange() {
     if (!_pageController.hasClients) return;
     final target = widget.controller.activeCardIndex.value;
     final current = _pageController.page?.round() ?? _pageController.initialPage ?? 0;
     if (target == current) return;
+    if (_displayController.reduceMotionNotifier.value) {
+      _pageController.jumpToPage(target);
+      return;
+    }
     _pageController.animateToPage(
       target,
       duration: const Duration(milliseconds: 360),
@@ -59,56 +76,71 @@ class _WalletCardCarouselState extends State<WalletCardCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<List<WalletCardModel>>(
-      valueListenable: widget.controller.cardsNotifier,
-      builder: (context, cards, _) {
-        if (cards.isEmpty) {
-          return Center(
-            child: Text(
-              localization.translate('noWalletCards'),
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          );
-        }
-        return SizedBox(
-          height: 220,
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: cards.length,
-            physics: const BouncingScrollPhysics(),
-            onPageChanged: widget.controller.setActiveIndex,
-            itemBuilder: (context, index) {
-              final card = cards[index];
-              return ValueListenableBuilder<int>(
-                valueListenable: widget.controller.activeCardIndex,
-                builder: (context, activeIndex, __) {
-                  final isActive = index == activeIndex;
-                  return AnimatedPadding(
-                    duration: const Duration(milliseconds: 320),
-                    curve: Curves.easeOutCubic,
-                    padding: EdgeInsets.symmetric(
-                      vertical: isActive ? 0 : 14,
-                      horizontal: 8,
-                    ),
-                    child: ValueListenableBuilder<Set<String>>(
-                      valueListenable: widget.controller.flippedCards,
-                      builder: (context, flipped, ___) {
-                        final isFlipped = flipped.contains(card.id);
-                        return _WalletFlipCard(
-                          card: card,
-                          isActive: isActive,
-                          isFlipped: isFlipped,
-                          onTap: () => widget.controller.toggleFlip(card.id),
-                          localization: widget.localization,
-                          privacyListenable: widget.privacyListenable,
-                        );
-                      },
+    return ValueListenableBuilder<CardSurfaceStyle>(
+      valueListenable: _displayController.cardStyle,
+      builder: (context, style, _) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: _displayController.reduceMotionNotifier,
+          builder: (context, reduceMotion, __) {
+            return ValueListenableBuilder<List<WalletCardModel>>(
+              valueListenable: widget.controller.cardsNotifier,
+              builder: (context, cards, _) {
+                if (cards.isEmpty) {
+                  return Center(
+                    child: Text(
+                      localization.translate('noWalletCards'),
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   );
-                },
-              );
-            },
-          ),
+                }
+                return SizedBox(
+                  height: 220,
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: cards.length,
+                    physics: const BouncingScrollPhysics(),
+                    onPageChanged: widget.controller.setActiveIndex,
+                    itemBuilder: (context, index) {
+                      final card = cards[index];
+                      return ValueListenableBuilder<int>(
+                        valueListenable: widget.controller.activeCardIndex,
+                        builder: (context, activeIndex, __) {
+                          final isActive = index == activeIndex;
+                          return AnimatedPadding(
+                            duration: reduceMotion
+                                ? Duration.zero
+                                : const Duration(milliseconds: 320),
+                            curve: Curves.easeOutCubic,
+                            padding: EdgeInsets.symmetric(
+                              vertical: isActive ? 0 : 14,
+                              horizontal: 8,
+                            ),
+                            child: ValueListenableBuilder<Set<String>>(
+                              valueListenable: widget.controller.flippedCards,
+                              builder: (context, flipped, ___) {
+                                final isFlipped = flipped.contains(card.id);
+                                return _WalletFlipCard(
+                                  card: card,
+                                  isActive: isActive,
+                                  isFlipped: isFlipped,
+                                  onTap: () =>
+                                      widget.controller.toggleFlip(card.id),
+                                  localization: widget.localization,
+                                  privacyListenable: widget.privacyListenable,
+                                  style: style,
+                                  reduceMotion: reduceMotion,
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -123,6 +155,8 @@ class _WalletFlipCard extends StatelessWidget {
     required this.onTap,
     required this.localization,
     required this.privacyListenable,
+    required this.style,
+    required this.reduceMotion,
   });
 
   final WalletCardModel card;
@@ -131,6 +165,8 @@ class _WalletFlipCard extends StatelessWidget {
   final VoidCallback onTap;
   final AppLocalizations localization;
   final ValueListenable<bool> privacyListenable;
+  final CardSurfaceStyle style;
+  final bool reduceMotion;
 
   @override
   Widget build(BuildContext context) {
@@ -140,18 +176,23 @@ class _WalletFlipCard extends StatelessWidget {
       isActive: isActive,
       localization: localization,
       privacyListenable: privacyListenable,
+      style: style,
+      reduceMotion: reduceMotion,
     );
     final back = _WalletCardBack(
       card: card,
       theme: theme,
       localization: localization,
+      style: style,
+      reduceMotion: reduceMotion,
     );
 
     return GestureDetector(
       onTap: onTap,
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 0, end: isFlipped ? pi : 0),
-        duration: const Duration(milliseconds: 520),
+        duration:
+            reduceMotion ? Duration.zero : const Duration(milliseconds: 520),
         curve: Curves.easeInOut,
         builder: (context, value, child) {
           final isFront = value < pi / 2;
@@ -180,35 +221,26 @@ class _WalletCardFront extends StatelessWidget {
     required this.isActive,
     required this.localization,
     required this.privacyListenable,
+    required this.style,
+    required this.reduceMotion,
   });
 
   final WalletCardModel card;
   final bool isActive;
   final AppLocalizations localization;
   final ValueListenable<bool> privacyListenable;
+  final CardSurfaceStyle style;
+  final bool reduceMotion;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 320),
+    final decoration = _frontDecoration(theme, card, style, isActive);
+    Widget cardSurface = AnimatedContainer(
+      duration:
+          reduceMotion ? Duration.zero : const Duration(milliseconds: 320),
       curve: Curves.easeOutCubic,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [card.startColor(), card.endColor()],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          if (isActive)
-            BoxShadow(
-              color: card.startColor().withOpacity(0.35),
-              blurRadius: 28,
-              offset: const Offset(0, 18),
-            ),
-        ],
-      ),
+      decoration: decoration,
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,6 +321,16 @@ class _WalletCardFront extends StatelessWidget {
         ],
       ),
     );
+    if (style == CardSurfaceStyle.glass) {
+      cardSurface = ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: cardSurface,
+        ),
+      );
+    }
+    return cardSurface;
   }
 }
 
@@ -297,23 +339,24 @@ class _WalletCardBack extends StatelessWidget {
     required this.card,
     required this.theme,
     required this.localization,
+    required this.style,
+    required this.reduceMotion,
   });
 
   final WalletCardModel card;
   final ThemeData theme;
   final AppLocalizations localization;
+  final CardSurfaceStyle style;
+  final bool reduceMotion;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.35),
-          width: 1.4,
-        ),
-      ),
+    final decoration = _backDecoration(theme, card, style);
+    Widget surface = AnimatedContainer(
+      duration:
+          reduceMotion ? Duration.zero : const Duration(milliseconds: 260),
+      curve: Curves.easeOut,
+      decoration: decoration,
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,6 +408,16 @@ class _WalletCardBack extends StatelessWidget {
         ],
       ),
     );
+    if (style == CardSurfaceStyle.glass) {
+      surface = ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+          child: surface,
+        ),
+      );
+    }
+    return surface;
   }
 }
 
@@ -400,5 +453,137 @@ class _WalletMetaLabel extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+BoxDecoration _frontDecoration(
+  ThemeData theme,
+  WalletCardModel card,
+  CardSurfaceStyle style,
+  bool isActive,
+) {
+  final radius = BorderRadius.circular(28);
+  switch (style) {
+    case CardSurfaceStyle.glass:
+      return BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            card.startColor().withOpacity(0.8),
+            card.endColor().withOpacity(0.74),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: radius,
+        border: Border.all(
+          color: Colors.white.withOpacity(isActive ? 0.4 : 0.25),
+          width: 1.2,
+        ),
+        boxShadow: [
+          if (isActive)
+            BoxShadow(
+              color: card.startColor().withOpacity(0.35),
+              blurRadius: 28,
+              offset: const Offset(0, 18),
+            )
+          else
+            BoxShadow(
+              color: card.startColor().withOpacity(0.18),
+              blurRadius: 20,
+              offset: const Offset(0, 12),
+            ),
+        ],
+      );
+    case CardSurfaceStyle.solid:
+      return BoxDecoration(
+        gradient: LinearGradient(
+          colors: [card.startColor(), card.endColor()],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: radius,
+        boxShadow: [
+          if (isActive)
+            BoxShadow(
+              color: card.startColor().withOpacity(0.32),
+              blurRadius: 24,
+              offset: const Offset(0, 16),
+            )
+          else
+            BoxShadow(
+              color: card.startColor().withOpacity(0.18),
+              blurRadius: 16,
+              offset: const Offset(0, 10),
+            ),
+        ],
+      );
+    case CardSurfaceStyle.subtle:
+      return BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: radius,
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withOpacity(0.4),
+        ),
+        boxShadow: [
+          if (isActive)
+            BoxShadow(
+              color: theme.colorScheme.shadow.withOpacity(0.22),
+              blurRadius: 22,
+              offset: const Offset(0, 14),
+            )
+          else
+            BoxShadow(
+              color: theme.shadowColor.withOpacity(0.12),
+              blurRadius: 14,
+              offset: const Offset(0, 8),
+            ),
+        ],
+      );
+  }
+}
+
+BoxDecoration _backDecoration(
+  ThemeData theme,
+  WalletCardModel card,
+  CardSurfaceStyle style,
+) {
+  final radius = BorderRadius.circular(28);
+  switch (style) {
+    case CardSurfaceStyle.glass:
+      return BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            card.endColor().withOpacity(0.65),
+            card.startColor().withOpacity(0.6),
+          ],
+          begin: Alignment.bottomRight,
+          end: Alignment.topLeft,
+        ),
+        borderRadius: radius,
+        border: Border.all(color: Colors.white.withOpacity(0.35)),
+      );
+    case CardSurfaceStyle.solid:
+      return BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: radius,
+        border: Border.all(
+          color: card.startColor().withOpacity(0.35),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: card.startColor().withOpacity(0.2),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      );
+    case CardSurfaceStyle.subtle:
+      return BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+        borderRadius: radius,
+        border: Border.all(
+          color: theme.colorScheme.outlineVariant.withOpacity(0.45),
+        ),
+      );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/localization/app_localizations.dart';
+import '../../core/utils/app_scope.dart';
+import '../../controllers/display_controller.dart';
 
 class SensitiveText extends StatefulWidget {
   const SensitiveText({
@@ -28,12 +30,28 @@ class SensitiveText extends StatefulWidget {
 
 class _SensitiveTextState extends State<SensitiveText> {
   late bool _revealed;
+  DisplayController? _displayController;
+  bool _reduceMotion = false;
 
   @override
   void initState() {
     super.initState();
     _revealed = !widget.privacyListenable.value;
     widget.privacyListenable.addListener(_handlePrivacyChange);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final scope = AppScope.maybeOf(context);
+    final controller = scope?.displayController;
+    if (_displayController == controller) {
+      return;
+    }
+    _displayController?.reduceMotionNotifier.removeListener(_handleReduceMotion);
+    _displayController = controller;
+    _reduceMotion = controller?.reduceMotionNotifier.value ?? false;
+    controller?.reduceMotionNotifier.addListener(_handleReduceMotion);
   }
 
   @override
@@ -49,6 +67,7 @@ class _SensitiveTextState extends State<SensitiveText> {
   @override
   void dispose() {
     widget.privacyListenable.removeListener(_handlePrivacyChange);
+    _displayController?.reduceMotionNotifier.removeListener(_handleReduceMotion);
     super.dispose();
   }
 
@@ -56,6 +75,13 @@ class _SensitiveTextState extends State<SensitiveText> {
     if (!mounted) return;
     setState(() {
       _revealed = !widget.privacyListenable.value;
+    });
+  }
+
+  void _handleReduceMotion() {
+    if (!mounted) return;
+    setState(() {
+      _reduceMotion = _displayController?.reduceMotionNotifier.value ?? false;
     });
   }
 
@@ -84,8 +110,12 @@ class _SensitiveTextState extends State<SensitiveText> {
         : widget.visibleText;
 
     Widget content = AnimatedSwitcher(
-      duration: const Duration(milliseconds: 260),
+      duration:
+          _reduceMotion ? Duration.zero : const Duration(milliseconds: 260),
       transitionBuilder: (child, animation) {
+        if (_reduceMotion) {
+          return child;
+        }
         final curved = CurvedAnimation(
           parent: animation,
           curve: Curves.easeOutCubic,

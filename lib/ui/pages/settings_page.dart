@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../controllers/display_controller.dart';
 import '../../controllers/locale_controller.dart';
 import '../../controllers/profile_controller.dart';
 import '../../controllers/session_controller.dart';
@@ -10,6 +11,7 @@ import '../../controllers/theme_controller.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/routing/app_router.dart';
 import '../../core/utils/app_constants.dart';
+import '../../core/utils/app_scope.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -29,43 +31,86 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final theme = Theme.of(context);
+    final displayController = AppScope.of(context).displayController;
 
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        child: ListView(
-          children: [
-            Text(
-              t.translate('settings'),
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ).animate().fadeIn(duration: 360.ms).slideY(begin: 0.2, end: 0),
-            const SizedBox(height: 24),
-            _ProfileSection(profileController: profileController, t: t),
-            const SizedBox(height: 24),
-            _ThemeSection(controller: themeController, t: t),
-            const SizedBox(height: 24),
-            _LocaleSection(controller: localeController, t: t),
-            const SizedBox(height: 24),
-            _PrimaryColorSection(controller: themeController, t: t),
-            const SizedBox(height: 24),
-            _ExperienceSection(
-              sessionController: sessionController,
-              t: t,
+    return ValueListenableBuilder<bool>(
+      valueListenable: displayController.reduceMotionNotifier,
+      builder: (context, reduceMotion, _) {
+        Widget heading = Text(
+          t.translate('settings'),
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        );
+        if (!reduceMotion) {
+          heading = heading
+              .animate()
+              .fadeIn(duration: 360.ms)
+              .slideY(begin: 0.2, end: 0);
+        }
+
+        return SafeArea(
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: ListView(
+              children: [
+                heading,
+                const SizedBox(height: 24),
+                _ProfileSection(
+                  profileController: profileController,
+                  t: t,
+                  reduceMotion: reduceMotion,
+                ),
+                const SizedBox(height: 24),
+                _ThemeSection(
+                  controller: themeController,
+                  t: t,
+                  reduceMotion: reduceMotion,
+                ),
+                const SizedBox(height: 24),
+                _LocaleSection(
+                  controller: localeController,
+                  t: t,
+                  reduceMotion: reduceMotion,
+                ),
+                const SizedBox(height: 24),
+                _PrimaryColorSection(
+                  controller: themeController,
+                  t: t,
+                  reduceMotion: reduceMotion,
+                ),
+                const SizedBox(height: 24),
+                _DisplayPreferencesSection(
+                  controller: displayController,
+                  t: t,
+                  reduceMotion: reduceMotion,
+                ),
+                const SizedBox(height: 24),
+                _ExperienceSection(
+                  sessionController: sessionController,
+                  t: t,
+                  reduceMotion: reduceMotion,
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
 
 class _ProfileSection extends StatelessWidget {
-  const _ProfileSection({required this.profileController, required this.t});
+  const _ProfileSection({
+    required this.profileController,
+    required this.t,
+    required this.reduceMotion,
+  });
 
   final ProfileController profileController;
   final AppLocalizations t;
+  final bool reduceMotion;
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +128,7 @@ class _ProfileSection extends StatelessWidget {
             return ValueListenableBuilder<String>(
               valueListenable: profileController.bioNotifier,
               builder: (context, bio, ___) {
-                return Card(
+                Widget card = Card(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
@@ -134,7 +179,14 @@ class _ProfileSection extends StatelessWidget {
                       ],
                     ),
                   ),
-                ).animate().fadeIn(duration: 320.ms).slideY(begin: 0.2, end: 0);
+                );
+                if (!reduceMotion) {
+                  card = card
+                      .animate()
+                      .fadeIn(duration: 320.ms)
+                      .slideY(begin: 0.2, end: 0);
+                }
+                return card;
               },
             );
           },
@@ -277,10 +329,12 @@ class _ExperienceSection extends StatelessWidget {
   const _ExperienceSection({
     required this.sessionController,
     required this.t,
+    required this.reduceMotion,
   });
 
   final SessionController sessionController;
   final AppLocalizations t;
+  final bool reduceMotion;
 
   @override
   Widget build(BuildContext context) {
@@ -294,7 +348,7 @@ class _ExperienceSection extends StatelessWidget {
         final primaryActionLabel =
             isGuest ? t.translate('login') : t.translate('signOut');
 
-        return Card(
+        Widget card = Card(
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -413,17 +467,122 @@ class _ExperienceSection extends StatelessWidget {
               ],
             ),
           ),
-        ).animate().fadeIn(duration: 360.ms).slideY(begin: 0.2, end: 0);
+        );
+        if (!reduceMotion) {
+          card = card
+              .animate()
+              .fadeIn(duration: 360.ms)
+              .slideY(begin: 0.2, end: 0);
+        }
+        return card;
       },
     );
   }
 }
 
+class _DisplayPreferencesSection extends StatelessWidget {
+  const _DisplayPreferencesSection({
+    required this.controller,
+    required this.t,
+    required this.reduceMotion,
+  });
+
+  final DisplayController controller;
+  final AppLocalizations t;
+  final bool reduceMotion;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    Widget card = Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              t.translate('settingsDisplayPreferencesTitle'),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              t.translate('settingsCardStyleLabel'),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.outline,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ValueListenableBuilder<CardSurfaceStyle>(
+              valueListenable: controller.cardStyle,
+              builder: (context, style, _) {
+                return SegmentedButton<CardSurfaceStyle>(
+                  segments: [
+                    ButtonSegment(
+                      value: CardSurfaceStyle.glass,
+                      label: Text(
+                        t.translate('settingsCardStyleGlass'),
+                      ),
+                    ),
+                    ButtonSegment(
+                      value: CardSurfaceStyle.solid,
+                      label: Text(
+                        t.translate('settingsCardStyleSolid'),
+                      ),
+                    ),
+                    ButtonSegment(
+                      value: CardSurfaceStyle.subtle,
+                      label: Text(
+                        t.translate('settingsCardStyleSubtle'),
+                      ),
+                    ),
+                  ],
+                  selected: {style},
+                  onSelectionChanged: (selection) {
+                    controller.setCardStyle(selection.first);
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            ValueListenableBuilder<bool>(
+              valueListenable: controller.reduceMotionNotifier,
+              builder: (context, value, _) {
+                return SwitchListTile.adaptive(
+                  contentPadding: EdgeInsets.zero,
+                  value: value,
+                  onChanged: (enabled) => controller.setReduceMotion(enabled),
+                  title: Text(t.translate('settingsReduceMotionLabel')),
+                  subtitle: Text(t.translate('settingsReduceMotionSubtitle')),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!reduceMotion) {
+      card = card
+          .animate()
+          .fadeIn(duration: 360.ms)
+          .slideY(begin: 0.2, end: 0);
+    }
+    return card;
+  }
+}
+
 class _ThemeSection extends StatelessWidget {
-  const _ThemeSection({required this.controller, required this.t});
+  const _ThemeSection({
+    required this.controller,
+    required this.t,
+    required this.reduceMotion,
+  });
 
   final ThemeController controller;
   final AppLocalizations t;
+  final bool reduceMotion;
 
   @override
   Widget build(BuildContext context) {
@@ -431,7 +590,7 @@ class _ThemeSection extends StatelessWidget {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: controller.themeMode,
       builder: (context, mode, _) {
-        return Card(
+        Widget card = Card(
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -463,17 +622,29 @@ class _ThemeSection extends StatelessWidget {
               ],
             ),
           ),
-        ).animate().fadeIn(duration: 380.ms).slideY(begin: 0.2, end: 0);
+        );
+        if (!reduceMotion) {
+          card = card
+              .animate()
+              .fadeIn(duration: 380.ms)
+              .slideY(begin: 0.2, end: 0);
+        }
+        return card;
       },
     );
   }
 }
 
 class _LocaleSection extends StatelessWidget {
-  const _LocaleSection({required this.controller, required this.t});
+  const _LocaleSection({
+    required this.controller,
+    required this.t,
+    required this.reduceMotion,
+  });
 
   final LocaleController controller;
   final AppLocalizations t;
+  final bool reduceMotion;
 
   @override
   Widget build(BuildContext context) {
@@ -481,7 +652,7 @@ class _LocaleSection extends StatelessWidget {
     return ValueListenableBuilder<Locale>(
       valueListenable: controller.locale,
       builder: (context, locale, _) {
-        return Card(
+        Widget card = Card(
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -514,24 +685,36 @@ class _LocaleSection extends StatelessWidget {
               ],
             ),
           ),
-        ).animate().fadeIn(duration: 380.ms).slideY(begin: 0.2, end: 0);
+        );
+        if (!reduceMotion) {
+          card = card
+              .animate()
+              .fadeIn(duration: 380.ms)
+              .slideY(begin: 0.2, end: 0);
+        }
+        return card;
       },
     );
   }
 }
 
 class _PrimaryColorSection extends StatelessWidget {
-  const _PrimaryColorSection({required this.controller, required this.t});
+  const _PrimaryColorSection({
+    required this.controller,
+    required this.t,
+    required this.reduceMotion,
+  });
 
   final ThemeController controller;
   final AppLocalizations t;
+  final bool reduceMotion;
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<Color>(
       valueListenable: controller.primaryColor,
       builder: (context, color, _) {
-        return Card(
+        Widget card = Card(
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Column(
@@ -560,7 +743,9 @@ class _PrimaryColorSection extends StatelessWidget {
                     return GestureDetector(
                       onTap: () => controller.updatePrimary(option),
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 240),
+                        duration: reduceMotion
+                            ? Duration.zero
+                            : const Duration(milliseconds: 240),
                         curve: Curves.fastOutSlowIn,
                         width: 54,
                         height: 54,
@@ -587,7 +772,14 @@ class _PrimaryColorSection extends StatelessWidget {
               ],
             ),
           ),
-        ).animate().fadeIn(duration: 380.ms).slideY(begin: 0.2, end: 0);
+        );
+        if (!reduceMotion) {
+          card = card
+              .animate()
+              .fadeIn(duration: 380.ms)
+              .slideY(begin: 0.2, end: 0);
+        }
+        return card;
       },
     );
   }

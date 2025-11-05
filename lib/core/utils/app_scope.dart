@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../controllers/budgets_controller.dart';
+import '../../controllers/display_controller.dart';
 import '../../controllers/locale_controller.dart';
 import '../../controllers/profile_controller.dart';
 import '../../controllers/search_controller.dart';
@@ -20,6 +21,7 @@ class AppScope extends InheritedWidget {
     required this.sessionController,
     required this.profileController,
     required this.walletController,
+    required this.displayController,
     required super.child,
   });
 
@@ -31,6 +33,7 @@ class AppScope extends InheritedWidget {
   final SessionController sessionController;
   final ProfileController profileController;
   final WalletController walletController;
+  final DisplayController displayController;
 
   static AppScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
@@ -51,6 +54,7 @@ class AppScope extends InheritedWidget {
         oldWidget.budgetsController != budgetsController ||
         oldWidget.sessionController != sessionController ||
         oldWidget.profileController != profileController ||
-        oldWidget.walletController != walletController;
+        oldWidget.walletController != walletController ||
+        oldWidget.displayController != displayController;
   }
 }
