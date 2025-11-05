@@ -1,0 +1,18 @@
+{
+  "appTitle": "مواعيد",
+  "welcome": "مرحبًا",
+  "settings": "الإعدادات",
+  "theme": "الوضع",
+  "lightMode": "فاتح",
+  "darkMode": "داكن",
+  "systemMode": "النظام",
+  "language": "اللغة",
+  "arabic": "العربية",
+  "english": "الإنجليزية",
+  "primaryColor": "اللون الأساسي",
+  "pickAColor": "اختر لونًا",
+  "save": "حفظ",
+  "cancel": "إلغاء",
+  "auto": "تلقائي",
+  "guest": "المتابعة كضيف"
+}

@@ -1,0 +1,18 @@
+{
+  "appTitle": "Mawaid",
+  "welcome": "Welcome",
+  "settings": "Settings",
+  "theme": "Theme",
+  "lightMode": "Light",
+  "darkMode": "Dark",
+  "systemMode": "System",
+  "language": "Language",
+  "arabic": "Arabic",
+  "english": "English",
+  "primaryColor": "Primary color",
+  "pickAColor": "Pick a color",
+  "save": "Save",
+  "cancel": "Cancel",
+  "auto": "Auto",
+  "guest": "Continue as guest"
+}
