@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../controllers/locale_controller.dart';
+import '../../controllers/session_controller.dart';
 import '../../controllers/theme_controller.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/routing/app_router.dart';
 import '../../core/utils/app_constants.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -11,10 +13,12 @@ class SettingsPage extends StatelessWidget {
     super.key,
     required this.themeController,
     required this.localeController,
+    required this.sessionController,
   });
 
   final ThemeController themeController;
   final LocaleController localeController;
+  final SessionController sessionController;
 
   @override
   Widget build(BuildContext context) {
@@ -38,9 +42,115 @@ class SettingsPage extends StatelessWidget {
             _LocaleSection(controller: localeController, t: t),
             const SizedBox(height: 24),
             _PrimaryColorSection(controller: themeController, t: t),
+            const SizedBox(height: 24),
+            _ExperienceSection(
+              sessionController: sessionController,
+              t: t,
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ExperienceSection extends StatelessWidget {
+  const _ExperienceSection({
+    required this.sessionController,
+    required this.t,
+  });
+
+  final SessionController sessionController;
+  final AppLocalizations t;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ValueListenableBuilder<bool>(
+      valueListenable: sessionController.isGuestNotifier,
+      builder: (context, isGuest, _) {
+        final description = isGuest
+            ? t.translate('guestModeDescription')
+            : t.translate('signedInDescription');
+        final primaryActionLabel =
+            isGuest ? t.translate('login') : t.translate('signOut');
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.translate('account'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  description,
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (isGuest) {
+                            Navigator.of(context)
+                                .pushNamed(AppRouter.login);
+                          } else {
+                            await sessionController.signOut();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(t.translate('signedOut')),
+                              ),
+                            );
+                          }
+                        },
+                        child: Text(primaryActionLabel),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          await sessionController.resetOnboarding();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content:
+                                  Text(t.translate('onboardingRestarted')),
+                            ),
+                          );
+                        },
+                        child: Text(t.translate('replayOnboarding')),
+                      ),
+                    ),
+                  ],
+                ),
+                if (isGuest)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: TextButton(
+                      onPressed: () async {
+                        await sessionController.continueAsGuest();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content:
+                                Text(t.translate('guestModeConfirmed')),
+                          ),
+                        );
+                      },
+                      child: Text(t.translate('stayAsGuest')),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ).animate().fadeIn(duration: 360.ms).slideY(begin: 0.2, end: 0);
+      },
     );
   }
 }

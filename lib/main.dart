@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -5,14 +7,22 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'controllers/budgets_controller.dart';
 import 'controllers/locale_controller.dart';
 import 'controllers/search_controller.dart';
+import 'controllers/session_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'controllers/transactions_controller.dart';
 import 'core/localization/app_localizations.dart';
+import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/utils/app_scope.dart';
+import 'ui/pages/auth/auth_landing_page.dart';
+import 'ui/pages/auth/forgot_password_page.dart';
+import 'ui/pages/auth/login_page.dart';
+import 'ui/pages/auth/signup_page.dart';
 import 'ui/pages/budgets_page.dart';
 import 'ui/pages/home_page.dart';
-import 'ui/pages/transactions_page.dart';
+import 'ui/pages/onboarding_page.dart';
 import 'ui/pages/settings_page.dart';
+import 'ui/pages/transactions_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +32,9 @@ Future<void> main() async {
   final searchController =
       await SearchController.load(transactionsController.allTransactions);
   final budgetsController = await BudgetsController.load();
+  final sessionController = await SessionController.load();
+
+  await transactionsController.updateLocale(localeController.locale.value);
 
   runApp(MawaidApp(
     themeController: themeController,
@@ -29,6 +42,7 @@ Future<void> main() async {
     transactionsController: transactionsController,
     searchController: searchController,
     budgetsController: budgetsController,
+    sessionController: sessionController,
   ));
 }
 
@@ -40,6 +54,7 @@ class MawaidApp extends StatefulWidget {
     required this.transactionsController,
     required this.searchController,
     required this.budgetsController,
+    required this.sessionController,
   });
 
   final ThemeController themeController;
@@ -47,20 +62,100 @@ class MawaidApp extends StatefulWidget {
   final TransactionsController transactionsController;
   final SearchController searchController;
   final BudgetsController budgetsController;
+  final SessionController sessionController;
 
   @override
   State<MawaidApp> createState() => _MawaidAppState();
 }
 
 class _MawaidAppState extends State<MawaidApp> {
-  int _selectedIndex = 0;
+  late final GlobalKey<NavigatorState> _navigatorKey;
+  late final String _initialRoute;
+  late AppEntryState _currentEntry;
+
+  @override
+  void initState() {
+    super.initState();
+    _navigatorKey = GlobalKey<NavigatorState>();
+    _currentEntry = widget.sessionController.entryState.value;
+    _initialRoute = AppRouter.routeForEntry(_currentEntry);
+    widget.sessionController.entryState.addListener(_handleEntryStateChange);
+    widget.localeController.locale.addListener(_handleLocaleChange);
+    _handleLocaleChange();
+  }
 
   @override
   void dispose() {
+    widget.sessionController.entryState
+        .removeListener(_handleEntryStateChange);
+    widget.localeController.locale.removeListener(_handleLocaleChange);
     widget.transactionsController.dispose();
     widget.searchController.dispose();
     widget.budgetsController.dispose();
+    widget.sessionController.dispose();
     super.dispose();
+  }
+
+  void _handleLocaleChange() {
+    final locale = widget.localeController.locale.value;
+    unawaited(widget.transactionsController.updateLocale(locale));
+  }
+
+  void _handleEntryStateChange() {
+    final next = widget.sessionController.entryState.value;
+    if (next == _currentEntry) return;
+    _currentEntry = next;
+    final navigator = _navigatorKey.currentState;
+    if (navigator == null) return;
+    final route = AppRouter.routeForEntry(next);
+    navigator.pushNamedAndRemoveUntil(route, (route) => false);
+  }
+
+  Route<dynamic> _onGenerateRoute(RouteSettings settings) {
+    switch (settings.name) {
+      case AppRouter.onboarding:
+        return AppRouter.buildRoute(
+          settings,
+          (_) => OnboardingPage(
+            themeController: widget.themeController,
+            localeController: widget.localeController,
+            sessionController: widget.sessionController,
+          ),
+        );
+      case AppRouter.auth:
+        return AppRouter.buildRoute(
+          settings,
+          (_) => AuthLandingPage(sessionController: widget.sessionController),
+        );
+      case AppRouter.login:
+        return AppRouter.buildRoute(
+          settings,
+          (_) => LoginPage(sessionController: widget.sessionController),
+        );
+      case AppRouter.signup:
+        return AppRouter.buildRoute(
+          settings,
+          (_) => SignupPage(sessionController: widget.sessionController),
+        );
+      case AppRouter.forgotPassword:
+        return AppRouter.buildRoute(
+          settings,
+          (_) => const ForgotPasswordPage(),
+        );
+      case AppRouter.home:
+      default:
+        return AppRouter.buildRoute(
+          settings,
+          (_) => HomeShell(
+            themeController: widget.themeController,
+            localeController: widget.localeController,
+            transactionsController: widget.transactionsController,
+            searchController: widget.searchController,
+            budgetsController: widget.budgetsController,
+            sessionController: widget.sessionController,
+          ),
+        );
+    }
   }
 
   @override
@@ -75,6 +170,7 @@ class _MawaidAppState extends State<MawaidApp> {
               valueListenable: widget.themeController.themeMode,
               builder: (context, mode, ___) {
                 return MaterialApp(
+                  navigatorKey: _navigatorKey,
                   debugShowCheckedModeBanner: false,
                   locale: locale,
                   supportedLocales: AppLocalizations.supportedLocales,
@@ -84,24 +180,35 @@ class _MawaidAppState extends State<MawaidApp> {
                     GlobalWidgetsLocalizations.delegate,
                     GlobalCupertinoLocalizations.delegate,
                   ],
+                  localeResolutionCallback: (deviceLocale, supportedLocales) {
+                    if (deviceLocale == null) {
+                      return supportedLocales.first;
+                    }
+                    for (final supported in supportedLocales) {
+                      if (supported.languageCode == deviceLocale.languageCode) {
+                        return supported;
+                      }
+                    }
+                    return supportedLocales.first;
+                  },
                   theme: AppTheme.light(primary, locale),
                   darkTheme: AppTheme.dark(primary, locale),
                   themeMode: mode,
                   onGenerateTitle: (context) =>
                       AppLocalizations.of(context).translate('appTitle'),
-                  home: _Shell(
-                    selectedIndex: _selectedIndex,
-                    onIndexChanged: (value) {
-                      setState(() => _selectedIndex = value);
-                    },
-                    themeController: widget.themeController,
-                    localeController: widget.localeController,
-                    primaryColor: primary,
-                    locale: locale,
-                    transactionsController: widget.transactionsController,
-                    searchController: widget.searchController,
-                    budgetsController: widget.budgetsController,
-                  ),
+                  initialRoute: _initialRoute,
+                  onGenerateRoute: _onGenerateRoute,
+                  builder: (context, child) {
+                    return AppScope(
+                      themeController: widget.themeController,
+                      localeController: widget.localeController,
+                      transactionsController: widget.transactionsController,
+                      searchController: widget.searchController,
+                      budgetsController: widget.budgetsController,
+                      sessionController: widget.sessionController,
+                      child: child ?? const SizedBox.shrink(),
+                    );
+                  },
                 );
               },
             );
@@ -112,60 +219,73 @@ class _MawaidAppState extends State<MawaidApp> {
   }
 }
 
-class _Shell extends StatelessWidget {
-  const _Shell({
-    required this.selectedIndex,
-    required this.onIndexChanged,
+class HomeShell extends StatefulWidget {
+  const HomeShell({
+    super.key,
     required this.themeController,
     required this.localeController,
-    required this.primaryColor,
-    required this.locale,
     required this.transactionsController,
     required this.searchController,
     required this.budgetsController,
+    required this.sessionController,
   });
 
-  final int selectedIndex;
-  final ValueChanged<int> onIndexChanged;
   final ThemeController themeController;
   final LocaleController localeController;
-  final Color primaryColor;
-  final Locale locale;
   final TransactionsController transactionsController;
   final SearchController searchController;
   final BudgetsController budgetsController;
+  final SessionController sessionController;
+
+  @override
+  State<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<HomeShell> {
+  int _currentIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     final pages = [
       HomePage(
-        transactionsController: transactionsController,
-        budgetsController: budgetsController,
-        searchController: searchController,
-        onOpenBudgets: () => onIndexChanged(1),
-        onOpenTransactions: () => onIndexChanged(2),
+        transactionsController: widget.transactionsController,
+        budgetsController: widget.budgetsController,
+        searchController: widget.searchController,
+        onOpenBudgets: () => setState(() => _currentIndex = 1),
+        onOpenTransactions: () => setState(() => _currentIndex = 2),
       ),
       BudgetsPage(
-        budgetsController: budgetsController,
+        budgetsController: widget.budgetsController,
       ),
       TransactionsPage(
-        transactionsController: transactionsController,
-        searchController: searchController,
+        transactionsController: widget.transactionsController,
+        searchController: widget.searchController,
       ),
       SettingsPage(
-        themeController: themeController,
-        localeController: localeController,
+        themeController: widget.themeController,
+        localeController: widget.localeController,
+        sessionController: widget.sessionController,
       ),
     ];
 
-    return Scaffold(
-      body: pages[selectedIndex],
-      bottomNavigationBar: _AnimatedBottomNav(
-        currentIndex: selectedIndex,
-        onChanged: onIndexChanged,
-        primaryColor: primaryColor,
-        locale: locale,
-      ),
+    return ValueListenableBuilder<Color>(
+      valueListenable: widget.themeController.primaryColor,
+      builder: (context, primary, _) {
+        return ValueListenableBuilder<Locale>(
+          valueListenable: widget.localeController.locale,
+          builder: (context, locale, __) {
+            return Scaffold(
+              body: pages[_currentIndex],
+              bottomNavigationBar: _AnimatedBottomNav(
+                currentIndex: _currentIndex,
+                onChanged: (value) => setState(() => _currentIndex = value),
+                primaryColor: primary,
+                locale: locale,
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -5,6 +5,8 @@ class AppConstants {
   static const String prefPrimaryColor = 'primary_color';
   static const String prefLocale = 'locale';
   static const String prefSeenOnboarding = 'seen_onboarding';
+  static const String prefIsGuest = 'is_guest';
+  static const String prefIsAuthenticated = 'is_authenticated';
   static const String prefBudgets = 'budgets';
   static const String prefSearchHistory = 'search_history';
   static const String prefLastCategoryFilter = 'last_category_filter';

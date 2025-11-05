@@ -16,13 +16,14 @@ class TransactionsController {
     this.isLoading,
     this.categoryFilter,
     this.tagFilters,
-  );
+  ) : _locale = const Locale('en');
 
   final List<TransactionModel> _allTransactions;
   final ValueNotifier<List<TransactionTimelineSection>> timelineNotifier;
   final ValueNotifier<bool> isLoading;
   final ValueNotifier<String?> categoryFilter;
   final ValueNotifier<Set<String>> tagFilters;
+  Locale _locale;
 
   final StreamController<TransactionModel> _recentlyArchived =
       StreamController.broadcast();
@@ -51,6 +52,12 @@ class TransactionsController {
 
     await controller._refreshTimeline(resetPage: true);
     return controller;
+  }
+
+  Future<void> updateLocale(Locale locale) async {
+    if (_locale == locale) return;
+    _locale = locale;
+    await _refreshTimeline(resetPage: true);
   }
 
   Stream<TransactionModel> get recentlyArchivedStream =>
@@ -213,9 +220,27 @@ class TransactionsController {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final diff = today.difference(date).inDays;
-    if (diff == 0) return 'Today';
-    if (diff == 1) return 'Yesterday';
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final code = _locale.languageCode.toLowerCase();
+    final todayLabel = code == 'ar' ? 'اليوم' : 'Today';
+    final yesterdayLabel = code == 'ar' ? 'أمس' : 'Yesterday';
+
+    if (diff == 0) return todayLabel;
+    if (diff == 1) return yesterdayLabel;
+
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    final formatted = '${date.year}-$month-$day';
+
+    if (code == 'ar') {
+      const arabicDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+      return formatted
+          .split('')
+          .map((char) => int.tryParse(char) != null
+              ? arabicDigits[int.parse(char)]
+              : char)
+          .join();
+    }
+    return formatted;
   }
 
   void dispose() {
