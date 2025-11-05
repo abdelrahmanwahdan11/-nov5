@@ -26,6 +26,10 @@ class AppConstants {
   static const String prefRecipients = 'all_recipients';
   static const String prefFavoriteRecipients = 'favorite_recipient_ids';
   static const String prefQuickSendAmounts = 'quick_send_amounts';
+  static const String prefAnalyticsRange = 'analytics_range';
+  static const String prefStatementMonth = 'statement_month';
+  static const String prefFeeCalculator = 'fee_calculator_state';
+  static const String prefInterestCalculator = 'interest_calculator_state';
 
   static const List<Color> primarySwatches = [
     Color(0xFF2BAA7D),
@@ -43,5 +47,14 @@ class AppConstants {
     [0xFF3A7BFF, 0xFF7FA6FF],
     [0xFF9B5DE5, 0xFFB48BFF],
     [0xFFFF8A3D, 0xFFFFB37A],
+  ];
+
+  static const List<Color> analyticsPalette = [
+    Color(0xFF2BAA7D),
+    Color(0xFF58C6A3),
+    Color(0xFF3A7BFF),
+    Color(0xFF9B5DE5),
+    Color(0xFFFF8A3D),
+    Color(0xFFFFC15E),
   ];
 }

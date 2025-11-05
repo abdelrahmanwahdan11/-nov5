@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../controllers/analytics_controller.dart';
 import '../../controllers/budgets_controller.dart';
 import '../../controllers/display_controller.dart';
 import '../../controllers/goals_controller.dart';
@@ -10,6 +11,7 @@ import '../../controllers/recurring_payments_controller.dart';
 import '../../controllers/search_controller.dart';
 import '../../controllers/session_controller.dart';
 import '../../controllers/theme_controller.dart';
+import '../../controllers/tools_controller.dart';
 import '../../controllers/transactions_controller.dart';
 import '../../controllers/wallet_controller.dart';
 
@@ -28,6 +30,8 @@ class AppScope extends InheritedWidget {
     required this.goalsController,
     required this.recipientsController,
     required this.recurringPaymentsController,
+    required this.analyticsController,
+    required this.toolsController,
     required super.child,
   });
 
@@ -43,6 +47,8 @@ class AppScope extends InheritedWidget {
   final GoalsController goalsController;
   final RecipientsController recipientsController;
   final RecurringPaymentsController recurringPaymentsController;
+  final AnalyticsController analyticsController;
+  final ToolsController toolsController;
 
   static AppScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
@@ -67,6 +73,8 @@ class AppScope extends InheritedWidget {
         oldWidget.displayController != displayController ||
         oldWidget.goalsController != goalsController ||
         oldWidget.recipientsController != recipientsController ||
-        oldWidget.recurringPaymentsController != recurringPaymentsController;
+        oldWidget.recurringPaymentsController != recurringPaymentsController ||
+        oldWidget.analyticsController != analyticsController ||
+        oldWidget.toolsController != toolsController;
   }
 }

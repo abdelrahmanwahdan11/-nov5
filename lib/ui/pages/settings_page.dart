@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../controllers/analytics_controller.dart';
 import '../../controllers/display_controller.dart';
 import '../../controllers/locale_controller.dart';
 import '../../controllers/profile_controller.dart';
 import '../../controllers/session_controller.dart';
 import '../../controllers/theme_controller.dart';
+import '../../controllers/tools_controller.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/routing/app_router.dart';
 import '../../core/utils/app_constants.dart';
@@ -20,12 +22,16 @@ class SettingsPage extends StatelessWidget {
     required this.localeController,
     required this.sessionController,
     required this.profileController,
+    required this.toolsController,
+    required this.analyticsController,
   });
 
   final ThemeController themeController;
   final LocaleController localeController;
   final SessionController sessionController;
   final ProfileController profileController;
+  final ToolsController toolsController;
+  final AnalyticsController analyticsController;
 
   @override
   Widget build(BuildContext context) {
@@ -90,6 +96,13 @@ class SettingsPage extends StatelessWidget {
                 _ExperienceSection(
                   sessionController: sessionController,
                   t: t,
+                  reduceMotion: reduceMotion,
+                ),
+                const SizedBox(height: 24),
+                _ResourcesSection(
+                  t: t,
+                  toolsController: toolsController,
+                  analyticsController: analyticsController,
                   reduceMotion: reduceMotion,
                 ),
               ],
@@ -476,6 +489,104 @@ class _ExperienceSection extends StatelessWidget {
         }
         return card;
       },
+    );
+  }
+}
+
+class _ResourcesSection extends StatelessWidget {
+  const _ResourcesSection({
+    required this.t,
+    required this.toolsController,
+    required this.analyticsController,
+    required this.reduceMotion,
+  });
+
+  final AppLocalizations t;
+  final ToolsController toolsController;
+  final AnalyticsController analyticsController;
+  final bool reduceMotion;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    Widget content = Card(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.insights_rounded),
+            title: Text(t.translate('settingsInsightsCenter')),
+            subtitle: Text(t.translate('settingsInsightsCenterSubtitle')),
+            onTap: () => Navigator.of(context).pushNamed(AppRouter.insights),
+          ),
+          const Divider(height: 1),
+          ValueListenableBuilder<StatementDocument>(
+            valueListenable: analyticsController.statementNotifier,
+            builder: (context, statement, _) {
+              final month = statement.month;
+              final monthLabel =
+                  '${month.year}-${month.month.toString().padLeft(2, '0')}';
+              return ListTile(
+                leading: const Icon(Icons.print_rounded),
+                title: Text(t.translate('settingsStatements')),
+                subtitle: Text(
+                  t.translate('settingsStatementsSubtitle',
+                      params: {'month': monthLabel}),
+                ),
+                onTap: () =>
+                    Navigator.of(context).pushNamed(AppRouter.statement),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ValueListenableBuilder<double>(
+            valueListenable: toolsController.feeAmountNotifier,
+            builder: (context, amount, _) {
+              final rate = toolsController.feeRateNotifier.value;
+              final subtitle = t.translate('settingsCalculatorsSubtitle',
+                  params: {
+                    'amount': amount.toStringAsFixed(0),
+                    'rate': rate.toStringAsFixed(1),
+                  });
+              return ListTile(
+                leading: const Icon(Icons.calculate_rounded),
+                title: Text(t.translate('settingsCalculators')),
+                subtitle: Text(subtitle),
+                onTap: () =>
+                    Navigator.of(context).pushNamed(AppRouter.calculators),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.auto_stories_rounded),
+            title: Text(t.translate('settingsGuidesCenter')),
+            subtitle: Text(t.translate('settingsGuidesCenterSubtitle')),
+            onTap: () => Navigator.of(context).pushNamed(AppRouter.guides),
+          ),
+        ],
+      ),
+    );
+
+    if (!reduceMotion) {
+      content = content
+          .animate()
+          .fadeIn(duration: 320.ms)
+          .slideY(begin: 0.1, end: 0, duration: 360.ms);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t.translate('settingsResourcesTitle'),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        content,
+      ],
     );
   }
 }

@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../../controllers/analytics_controller.dart';
 import '../../controllers/budgets_controller.dart';
 import '../../controllers/goals_controller.dart';
 import '../../controllers/profile_controller.dart';
@@ -17,6 +19,8 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/routing/app_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_constants.dart';
+import '../../core/utils/app_scope.dart';
+import '../../data/models/analytics.dart';
 import '../../data/models/budget.dart';
 import '../../data/models/recipient.dart';
 import '../../data/models/savings_goal.dart';
@@ -42,6 +46,8 @@ class HomePage extends StatefulWidget {
     required this.goalsController,
     required this.recipientsController,
     required this.recurringPaymentsController,
+    required this.analyticsController,
+    required this.onOpenInsights,
     required this.onOpenBudgets,
     required this.onOpenTransactions,
   });
@@ -55,6 +61,8 @@ class HomePage extends StatefulWidget {
   final GoalsController goalsController;
   final RecipientsController recipientsController;
   final RecurringPaymentsController recurringPaymentsController;
+  final AnalyticsController analyticsController;
+  final VoidCallback onOpenInsights;
   final VoidCallback onOpenBudgets;
   final VoidCallback onOpenTransactions;
 
@@ -274,6 +282,7 @@ class _HomePageState extends State<HomePage> {
     final t = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final brightness = theme.brightness;
+    final displayController = AppScope.of(context).displayController;
 
     return Stack(
       children: [
@@ -398,6 +407,45 @@ class _HomePageState extends State<HomePage> {
                   padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
+                      ValueListenableBuilder<AnalyticsSummary>(
+                        valueListenable:
+                            widget.analyticsController.summaryNotifier,
+                        builder: (context, summary, _) {
+                          return ValueListenableBuilder<bool>(
+                            valueListenable:
+                                displayController.reduceMotionNotifier,
+                            builder: (context, reduceMotion, __) {
+                              return _AnalyticsOverviewCard(
+                                summary: summary,
+                                t: t,
+                                theme: theme,
+                                reduceMotion: reduceMotion,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      ValueListenableBuilder<bool>(
+                        valueListenable:
+                            displayController.reduceMotionNotifier,
+                        builder: (context, reduceMotion, _) {
+                          return _QuickActionsRow(
+                            t: t,
+                            reduceMotion: reduceMotion,
+                            onInsights: widget.onOpenInsights,
+                            onBudgets: widget.onOpenBudgets,
+                            onTransactions: widget.onOpenTransactions,
+                            onStatement: () =>
+                                Navigator.of(context).pushNamed(AppRouter.statement),
+                            onCalculators: () => Navigator.of(context)
+                                .pushNamed(AppRouter.calculators),
+                            onGuides: () =>
+                                Navigator.of(context).pushNamed(AppRouter.guides),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -683,6 +731,362 @@ class _HomePageState extends State<HomePage> {
         ),
       ],
     );
+  }
+}
+
+class _QuickActionsRow extends StatelessWidget {
+  const _QuickActionsRow({
+    required this.t,
+    required this.reduceMotion,
+    required this.onInsights,
+    required this.onBudgets,
+    required this.onTransactions,
+    required this.onStatement,
+    required this.onCalculators,
+    required this.onGuides,
+  });
+
+  final AppLocalizations t;
+  final bool reduceMotion;
+  final VoidCallback onInsights;
+  final VoidCallback onBudgets;
+  final VoidCallback onTransactions;
+  final VoidCallback onStatement;
+  final VoidCallback onCalculators;
+  final VoidCallback onGuides;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        _QuickActionChip(
+          icon: Icons.insights_rounded,
+          label: t.translate('quickActionInsights'),
+          onTap: onInsights,
+          reduceMotion: reduceMotion,
+        ),
+        _QuickActionChip(
+          icon: Icons.account_balance_wallet_rounded,
+          label: t.translate('quickActionBudgets'),
+          onTap: onBudgets,
+          reduceMotion: reduceMotion,
+        ),
+        _QuickActionChip(
+          icon: Icons.receipt_long_rounded,
+          label: t.translate('quickActionTransactions'),
+          onTap: onTransactions,
+          reduceMotion: reduceMotion,
+        ),
+        _QuickActionChip(
+          icon: Icons.print_rounded,
+          label: t.translate('quickActionStatements'),
+          onTap: onStatement,
+          reduceMotion: reduceMotion,
+        ),
+        _QuickActionChip(
+          icon: Icons.calculate_rounded,
+          label: t.translate('quickActionCalculators'),
+          onTap: onCalculators,
+          reduceMotion: reduceMotion,
+        ),
+        _QuickActionChip(
+          icon: Icons.auto_stories_rounded,
+          label: t.translate('quickActionGuides'),
+          onTap: onGuides,
+          reduceMotion: reduceMotion,
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickActionChip extends StatelessWidget {
+  const _QuickActionChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.reduceMotion,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool reduceMotion;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    Widget child = Material(
+      color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 18, color: theme.colorScheme.primary),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!reduceMotion) {
+      child = child.animate().fadeIn(duration: 240.ms).scale(
+            begin: const Offset(0.96, 0.96),
+            end: const Offset(1, 1),
+            duration: 300.ms,
+          );
+    }
+    return child;
+  }
+}
+
+class _AnalyticsOverviewCard extends StatelessWidget {
+  const _AnalyticsOverviewCard({
+    required this.summary,
+    required this.t,
+    required this.theme,
+    required this.reduceMotion,
+  });
+
+  final AnalyticsSummary summary;
+  final AppLocalizations t;
+  final ThemeData theme;
+  final bool reduceMotion;
+
+  @override
+  Widget build(BuildContext context) {
+    final income = summary.totalIncome;
+    final expense = summary.totalExpense;
+    final net = income - expense;
+    final savingsPercent = (summary.savingsRate * 100).clamp(-100, 100);
+    final totalForCategory = summary.categorySlices
+        .fold<double>(0, (sum, slice) => sum + slice.value);
+
+    final card = Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: [
+            theme.colorScheme.primary.withOpacity(0.12),
+            theme.colorScheme.primary.withOpacity(0.04),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      t.translate('analyticsOverviewTitle'),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      t.translate('analyticsOverviewSubtitle'),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: t.translate('quickActionInsights'),
+                onPressed: () =>
+                    Navigator.of(context).pushNamed(AppRouter.insights),
+                icon: const Icon(Icons.fullscreen_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _MetricTile(
+                  label: t.translate('analyticsIncomeLabel'),
+                  value: income,
+                  theme: theme,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _MetricTile(
+                  label: t.translate('analyticsExpenseLabel'),
+                  value: expense,
+                  theme: theme,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _MetricTile(
+                  label: t.translate('analyticsNetLabel'),
+                  value: net,
+                  theme: theme,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            height: 90,
+            child: CustomPaint(
+              painter: _SparklinePainter(
+                summary.netSeries,
+                theme.colorScheme.primary,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            t.translate('analyticsSavingsLabel', params: {
+              'percent': savingsPercent.toStringAsFixed(0),
+            }),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final slice in summary.categorySlices.take(4))
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: slice.color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    totalForCategory == 0
+                        ? slice.label
+                        : '${slice.label} · ${(slice.value / totalForCategory * 100).toStringAsFixed(0)}%',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              if (summary.categorySlices.isEmpty)
+                Text(
+                  t.translate('analyticsEmptyCategories'),
+                  style: theme.textTheme.labelMedium,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (reduceMotion) {
+      return card;
+    }
+    return card
+        .animate()
+        .fadeIn(duration: 320.ms)
+        .slideY(begin: 0.2, end: 0, duration: 360.ms);
+  }
+}
+
+class _MetricTile extends StatelessWidget {
+  const _MetricTile({
+    required this.label,
+    required this.value,
+    required this.theme,
+  });
+
+  final String label;
+  final double value;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: theme.colorScheme.onSurface.withOpacity(0.7),
+          ),
+        ),
+        const SizedBox(height: 6),
+        SensitiveText(
+          privacyListenable:
+              AppScope.of(context).sessionController.privacyModeNotifier,
+          visibleText: value.toStringAsFixed(0),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SparklinePainter extends CustomPainter {
+  _SparklinePainter(this.points, this.color);
+
+  final List<ChartPoint> points;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (points.isEmpty) {
+      return;
+    }
+    final sorted = [...points]..sort((a, b) => a.date.compareTo(b.date));
+    final values = sorted.map((p) => p.value).toList();
+    final minValue = values.reduce(math.min);
+    final maxValue = values.reduce(math.max);
+    final range = (maxValue - minValue).abs() < 0.001 ? 1 : (maxValue - minValue);
+    final dx = size.width / math.max(sorted.length - 1, 1);
+    final path = Path();
+    for (var i = 0; i < sorted.length; i++) {
+      final x = dx * i;
+      final normalized = (sorted[i].value - minValue) / range;
+      final y = size.height - (normalized * size.height);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SparklinePainter oldDelegate) {
+    return oldDelegate.points != points || oldDelegate.color != color;
   }
 }
 

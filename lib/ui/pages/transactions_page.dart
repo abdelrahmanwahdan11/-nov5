@@ -6,6 +6,7 @@ import '../../controllers/recurring_payments_controller.dart';
 import '../../controllers/search_controller.dart';
 import '../../controllers/transactions_controller.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/routing/app_router.dart';
 import '../../data/models/recurring_payment.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/transaction_timeline.dart';
@@ -78,6 +79,17 @@ class _TransactionsPageState extends State<TransactionsPage> {
                     onPressed: widget.transactionsController.clearSelection,
                   )
                 : null,
+            actions: isSelecting
+                ? null
+                : [
+                    IconButton(
+                      icon: const Icon(Icons.print_rounded),
+                      tooltip: t.translate('statementTitle'),
+                      onPressed: () {
+                        Navigator.of(context).pushNamed(AppRouter.statement);
+                      },
+                    ),
+                  ],
           ),
           body: Stack(
             children: [

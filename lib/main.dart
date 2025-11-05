@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'controllers/analytics_controller.dart';
 import 'controllers/budgets_controller.dart';
 import 'controllers/display_controller.dart';
 import 'controllers/goals_controller.dart';
@@ -14,6 +15,7 @@ import 'controllers/recurring_payments_controller.dart';
 import 'controllers/search_controller.dart';
 import 'controllers/session_controller.dart';
 import 'controllers/theme_controller.dart';
+import 'controllers/tools_controller.dart';
 import 'controllers/transactions_controller.dart';
 import 'controllers/wallet_controller.dart';
 import 'core/localization/app_localizations.dart';
@@ -27,10 +29,13 @@ import 'ui/pages/auth/signup_page.dart';
 import 'ui/pages/budgets_page.dart';
 import 'ui/pages/guides_page.dart';
 import 'ui/pages/home_page.dart';
+import 'ui/pages/insights_page.dart';
 import 'ui/pages/onboarding_page.dart';
+import 'ui/pages/statement_page.dart';
 import 'ui/pages/settings_page.dart';
 import 'ui/pages/transactions_page.dart';
 import 'ui/pages/wallets_page.dart';
+import 'ui/pages/calculators_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,6 +44,8 @@ Future<void> main() async {
   final transactionsController = await TransactionsController.load();
   final searchController =
       await SearchController.load(transactionsController.allTransactions);
+  final analyticsController =
+      await AnalyticsController.load(transactionsController.allTransactions);
   final budgetsController = await BudgetsController.load();
   final sessionController = await SessionController.load();
   final profileController = await ProfileController.load();
@@ -47,6 +54,7 @@ Future<void> main() async {
   final goalsController = await GoalsController.load();
   final recipientsController = await RecipientsController.load();
   final recurringPaymentsController = await RecurringPaymentsController.load();
+  final toolsController = await ToolsController.load();
 
   await transactionsController.updateLocale(localeController.locale.value);
 
@@ -63,6 +71,8 @@ Future<void> main() async {
     goalsController: goalsController,
     recipientsController: recipientsController,
     recurringPaymentsController: recurringPaymentsController,
+    analyticsController: analyticsController,
+    toolsController: toolsController,
   ));
 }
 
@@ -81,6 +91,8 @@ class MawaidApp extends StatefulWidget {
     required this.goalsController,
     required this.recipientsController,
     required this.recurringPaymentsController,
+    required this.analyticsController,
+    required this.toolsController,
   });
 
   final ThemeController themeController;
@@ -95,6 +107,8 @@ class MawaidApp extends StatefulWidget {
   final GoalsController goalsController;
   final RecipientsController recipientsController;
   final RecurringPaymentsController recurringPaymentsController;
+  final AnalyticsController analyticsController;
+  final ToolsController toolsController;
 
   @override
   State<MawaidApp> createState() => _MawaidAppState();
@@ -106,6 +120,7 @@ class _MawaidAppState extends State<MawaidApp> {
   late AppEntryState _currentEntry;
   String? _pendingRoute;
   bool _pendingFlushScheduled = false;
+  late final VoidCallback _transactionsListener;
 
   @override
   void initState() {
@@ -115,6 +130,13 @@ class _MawaidAppState extends State<MawaidApp> {
     _initialRoute = AppRouter.routeForEntry(_currentEntry);
     widget.sessionController.entryState.addListener(_handleEntryStateChange);
     widget.localeController.locale.addListener(_handleLocaleChange);
+    _transactionsListener = () {
+      widget.searchController
+          .rebuildSource(widget.transactionsController.allTransactions);
+      widget.analyticsController
+          .rebuild(widget.transactionsController.allTransactions);
+    };
+    widget.transactionsController.addListener(_transactionsListener);
     _handleLocaleChange();
   }
 
@@ -123,6 +145,7 @@ class _MawaidAppState extends State<MawaidApp> {
     widget.sessionController.entryState
         .removeListener(_handleEntryStateChange);
     widget.localeController.locale.removeListener(_handleLocaleChange);
+    widget.transactionsController.removeListener(_transactionsListener);
     widget.transactionsController.dispose();
     widget.searchController.dispose();
     widget.budgetsController.dispose();
@@ -133,6 +156,8 @@ class _MawaidAppState extends State<MawaidApp> {
     widget.goalsController.dispose();
     widget.recipientsController.dispose();
     widget.recurringPaymentsController.dispose();
+    widget.analyticsController.dispose();
+    widget.toolsController.dispose();
     super.dispose();
   }
 
@@ -217,6 +242,36 @@ class _MawaidAppState extends State<MawaidApp> {
             privacyListenable: widget.sessionController.privacyModeNotifier,
           ),
         );
+      case AppRouter.insights:
+        return AppRouter.buildRoute(
+          settings,
+          (_) => InsightsPage(
+            analyticsController: widget.analyticsController,
+            sessionController: widget.sessionController,
+          ),
+        );
+      case AppRouter.statement:
+        return AppRouter.buildRoute(
+          settings,
+          (_) => StatementPage(
+            analyticsController: widget.analyticsController,
+            sessionController: widget.sessionController,
+          ),
+        );
+      case AppRouter.calculators:
+        return AppRouter.buildRoute(
+          settings,
+          (_) => CalculatorsPage(
+            toolsController: widget.toolsController,
+          ),
+        );
+      case AppRouter.guides:
+        return AppRouter.buildRoute(
+          settings,
+          (_) => GuidesPage(
+            profileController: widget.profileController,
+          ),
+        );
       case AppRouter.home:
       default:
         return AppRouter.buildRoute(
@@ -233,6 +288,8 @@ class _MawaidAppState extends State<MawaidApp> {
             goalsController: widget.goalsController,
             recipientsController: widget.recipientsController,
             recurringPaymentsController: widget.recurringPaymentsController,
+            analyticsController: widget.analyticsController,
+            toolsController: widget.toolsController,
           ),
         );
     }
@@ -293,6 +350,8 @@ class _MawaidAppState extends State<MawaidApp> {
                       recipientsController: widget.recipientsController,
                       recurringPaymentsController:
                           widget.recurringPaymentsController,
+                      analyticsController: widget.analyticsController,
+                      toolsController: widget.toolsController,
                       child: child ?? const SizedBox.shrink(),
                     );
                   },
@@ -320,6 +379,8 @@ class HomeShell extends StatefulWidget {
     required this.goalsController,
     required this.recipientsController,
     required this.recurringPaymentsController,
+    required this.analyticsController,
+    required this.toolsController,
   });
 
   final ThemeController themeController;
@@ -333,6 +394,8 @@ class HomeShell extends StatefulWidget {
   final GoalsController goalsController;
   final RecipientsController recipientsController;
   final RecurringPaymentsController recurringPaymentsController;
+  final AnalyticsController analyticsController;
+  final ToolsController toolsController;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -356,18 +419,21 @@ class _HomeShellState extends State<HomeShell> {
         goalsController: widget.goalsController,
         recipientsController: widget.recipientsController,
         recurringPaymentsController: widget.recurringPaymentsController,
-        onOpenBudgets: () => setState(() => _currentIndex = 1),
+        analyticsController: widget.analyticsController,
+        onOpenInsights: () => setState(() => _currentIndex = 1),
+        onOpenBudgets: () => setState(() => _currentIndex = 2),
         onOpenTransactions: () => setState(() => _currentIndex = 3),
+      ),
+      InsightsPage(
+        key: const PageStorageKey('insights-page'),
+        analyticsController: widget.analyticsController,
+        sessionController: widget.sessionController,
       ),
       BudgetsPage(
         key: const PageStorageKey('budgets-page'),
         budgetsController: widget.budgetsController,
         privacyListenable: widget.sessionController.privacyModeNotifier,
         goalsController: widget.goalsController,
-      ),
-      GuidesPage(
-        key: const PageStorageKey('guides-page'),
-        profileController: widget.profileController,
       ),
       TransactionsPage(
         key: const PageStorageKey('transactions-page'),
@@ -382,6 +448,8 @@ class _HomeShellState extends State<HomeShell> {
         localeController: widget.localeController,
         sessionController: widget.sessionController,
         profileController: widget.profileController,
+        toolsController: widget.toolsController,
+        analyticsController: widget.analyticsController,
       ),
     ];
 
@@ -431,15 +499,15 @@ class _AnimatedBottomNav extends StatelessWidget {
     final t = AppLocalizations.of(context);
     final labels = [
       t.translate('navHome'),
+      t.translate('navInsights'),
       t.translate('navBudgets'),
-      t.translate('navGuides'),
       t.translate('navTransactions'),
       t.translate('navSettings'),
     ];
     final icons = const [
       Icons.dashboard_rounded,
+      Icons.insights_rounded,
       Icons.account_balance_wallet_rounded,
-      Icons.auto_stories_rounded,
       Icons.receipt_long_rounded,
       Icons.settings_rounded,
     ];

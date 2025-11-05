@@ -10,6 +10,10 @@ class AppRouter {
   static const forgotPassword = '/auth/forgot';
   static const home = '/home';
   static const wallets = '/wallets';
+  static const insights = '/home/insights';
+  static const statement = '/home/statement';
+  static const calculators = '/home/calculators';
+  static const guides = '/home/guides';
 
   static String routeForEntry(AppEntryState state) {
     switch (state) {

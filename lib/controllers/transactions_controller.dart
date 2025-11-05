@@ -33,6 +33,7 @@ class TransactionsController {
       StreamController.broadcast();
 
   final List<TransactionsUndoEntry> _undoStack = <TransactionsUndoEntry>[];
+  final List<VoidCallback> _listeners = <VoidCallback>[];
 
   String? _query;
   int _currentPage = 0;
@@ -106,6 +107,15 @@ class TransactionsController {
 
   Stream<TransactionModel> get recentlyArchivedStream =>
       _recentlyArchived.stream;
+
+  void addListener(VoidCallback listener) {
+    if (_listeners.contains(listener)) return;
+    _listeners.add(listener);
+  }
+
+  void removeListener(VoidCallback listener) {
+    _listeners.remove(listener);
+  }
 
   List<String> get categories =>
       _allTransactions.map((tx) => tx.category).toSet().toList()..sort();
@@ -201,6 +211,7 @@ class TransactionsController {
     }
 
     isLoading.value = false;
+    _notifyListeners();
   }
 
   List<TransactionTimelineSection> _buildTimeline(
@@ -411,6 +422,13 @@ class TransactionsController {
     selectedTransactions.dispose();
     undoHistory.dispose();
     _recentlyArchived.close();
+    _listeners.clear();
+  }
+
+  void _notifyListeners() {
+    for (final listener in List<VoidCallback>.from(_listeners)) {
+      listener();
+    }
   }
 }
 
