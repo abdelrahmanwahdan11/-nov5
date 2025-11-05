@@ -2,21 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'controllers/budgets_controller.dart';
 import 'controllers/locale_controller.dart';
+import 'controllers/search_controller.dart';
 import 'controllers/theme_controller.dart';
+import 'controllers/transactions_controller.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/theme/app_theme.dart';
+import 'ui/pages/budgets_page.dart';
 import 'ui/pages/home_page.dart';
+import 'ui/pages/transactions_page.dart';
 import 'ui/pages/settings_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final themeController = await ThemeController.load();
   final localeController = await LocaleController.load();
+  final transactionsController = await TransactionsController.load();
+  final searchController =
+      await SearchController.load(transactionsController.allTransactions);
+  final budgetsController = await BudgetsController.load();
 
   runApp(MawaidApp(
     themeController: themeController,
     localeController: localeController,
+    transactionsController: transactionsController,
+    searchController: searchController,
+    budgetsController: budgetsController,
   ));
 }
 
@@ -25,10 +37,16 @@ class MawaidApp extends StatefulWidget {
     super.key,
     required this.themeController,
     required this.localeController,
+    required this.transactionsController,
+    required this.searchController,
+    required this.budgetsController,
   });
 
   final ThemeController themeController;
   final LocaleController localeController;
+  final TransactionsController transactionsController;
+  final SearchController searchController;
+  final BudgetsController budgetsController;
 
   @override
   State<MawaidApp> createState() => _MawaidAppState();
@@ -36,6 +54,14 @@ class MawaidApp extends StatefulWidget {
 
 class _MawaidAppState extends State<MawaidApp> {
   int _selectedIndex = 0;
+
+  @override
+  void dispose() {
+    widget.transactionsController.dispose();
+    widget.searchController.dispose();
+    widget.budgetsController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,6 +98,9 @@ class _MawaidAppState extends State<MawaidApp> {
                     localeController: widget.localeController,
                     primaryColor: primary,
                     locale: locale,
+                    transactionsController: widget.transactionsController,
+                    searchController: widget.searchController,
+                    budgetsController: widget.budgetsController,
                   ),
                 );
               },
@@ -91,6 +120,9 @@ class _Shell extends StatelessWidget {
     required this.localeController,
     required this.primaryColor,
     required this.locale,
+    required this.transactionsController,
+    required this.searchController,
+    required this.budgetsController,
   });
 
   final int selectedIndex;
@@ -99,11 +131,27 @@ class _Shell extends StatelessWidget {
   final LocaleController localeController;
   final Color primaryColor;
   final Locale locale;
+  final TransactionsController transactionsController;
+  final SearchController searchController;
+  final BudgetsController budgetsController;
 
   @override
   Widget build(BuildContext context) {
     final pages = [
-      const HomePage(),
+      HomePage(
+        transactionsController: transactionsController,
+        budgetsController: budgetsController,
+        searchController: searchController,
+        onOpenBudgets: () => onIndexChanged(1),
+        onOpenTransactions: () => onIndexChanged(2),
+      ),
+      BudgetsPage(
+        budgetsController: budgetsController,
+      ),
+      TransactionsPage(
+        transactionsController: transactionsController,
+        searchController: searchController,
+      ),
       SettingsPage(
         themeController: themeController,
         localeController: localeController,
@@ -138,8 +186,18 @@ class _AnimatedBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    final labels = [t.translate('welcome'), t.translate('settings')];
-    final icons = const [Icons.dashboard_rounded, Icons.settings_rounded];
+    final labels = [
+      t.translate('navHome'),
+      t.translate('navBudgets'),
+      t.translate('navTransactions'),
+      t.translate('navSettings'),
+    ];
+    final icons = const [
+      Icons.dashboard_rounded,
+      Icons.account_balance_wallet_rounded,
+      Icons.receipt_long_rounded,
+      Icons.settings_rounded,
+    ];
 
     return DecoratedBox(
       decoration: BoxDecoration(

@@ -1,0 +1,228 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../core/utils/app_constants.dart';
+import '../data/models/transaction.dart';
+import '../data/models/transaction_timeline.dart';
+import '../data/mock/mock_data.dart';
+
+class TransactionsController {
+  TransactionsController._(
+    this._allTransactions,
+    this.timelineNotifier,
+    this.isLoading,
+    this.categoryFilter,
+    this.tagFilters,
+  );
+
+  final List<TransactionModel> _allTransactions;
+  final ValueNotifier<List<TransactionTimelineSection>> timelineNotifier;
+  final ValueNotifier<bool> isLoading;
+  final ValueNotifier<String?> categoryFilter;
+  final ValueNotifier<Set<String>> tagFilters;
+
+  final StreamController<TransactionModel> _recentlyArchived =
+      StreamController.broadcast();
+
+  String? _query;
+  int _currentPage = 0;
+  static const _pageSize = 25;
+
+  static Future<TransactionsController> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = MockDataGenerator.generateTransactions(count: 180)
+      ..sort((a, b) => b.date.compareTo(a.date));
+
+    final storedCategory = prefs.getString(AppConstants.prefLastCategoryFilter);
+    final storedTags = prefs.getStringList(AppConstants.prefLastTagFilters);
+
+    final controller = TransactionsController._(
+      data,
+      ValueNotifier<List<TransactionTimelineSection>>(<TransactionTimelineSection>[]),
+      ValueNotifier<bool>(false),
+      ValueNotifier<String?>(storedCategory),
+      ValueNotifier<Set<String>>(storedTags == null
+          ? <String>{}
+          : storedTags.map((e) => utf8.decode(base64Decode(e))).toSet()),
+    );
+
+    await controller._refreshTimeline(resetPage: true);
+    return controller;
+  }
+
+  Stream<TransactionModel> get recentlyArchivedStream =>
+      _recentlyArchived.stream;
+
+  List<String> get categories =>
+      _allTransactions.map((tx) => tx.category).toSet().toList()..sort();
+
+  Set<String> get availableTags =>
+      _allTransactions.expand((tx) => tx.tags).toSet();
+
+  List<TransactionModel> get allTransactions =>
+      List<TransactionModel>.unmodifiable(_allTransactions);
+
+  Future<void> applyQuery(String? query) async {
+    _query = query?.trim().isEmpty ?? true ? null : query?.trim();
+    await _refreshTimeline(resetPage: true);
+  }
+
+  Future<void> selectCategory(String? category) async {
+    categoryFilter.value = category;
+    final prefs = await SharedPreferences.getInstance();
+    if (category == null) {
+      await prefs.remove(AppConstants.prefLastCategoryFilter);
+    } else {
+      await prefs.setString(AppConstants.prefLastCategoryFilter, category);
+    }
+    await _refreshTimeline(resetPage: true);
+  }
+
+  Future<void> toggleTag(String tag) async {
+    final tags = {...tagFilters.value};
+    if (tags.contains(tag)) {
+      tags.remove(tag);
+    } else {
+      tags.add(tag);
+    }
+    tagFilters.value = tags;
+    await _persistTags(tags);
+    await _refreshTimeline(resetPage: true);
+  }
+
+  Future<void> clearTags() async {
+    tagFilters.value = <String>{};
+    await _persistTags(tagFilters.value);
+    await _refreshTimeline(resetPage: true);
+  }
+
+  Future<void> loadMore() async {
+    await _refreshTimeline(resetPage: false);
+  }
+
+  Future<void> refresh() async {
+    await _refreshTimeline(resetPage: true);
+  }
+
+  Future<void> _refreshTimeline({required bool resetPage}) async {
+    if (isLoading.value) return;
+    isLoading.value = true;
+
+    if (resetPage) {
+      _currentPage = 0;
+    }
+
+    await Future<void>.delayed(const Duration(milliseconds: 320));
+
+    final filtered = _allTransactions.where((tx) {
+      final matchesQuery = _query == null
+          ? true
+          : (tx.title.toLowerCase().contains(_query!.toLowerCase()) ||
+              tx.description.toLowerCase().contains(_query!.toLowerCase()) ||
+              tx.tags.any(
+                  (tag) => tag.toLowerCase().contains(_query!.toLowerCase())));
+      final matchesCategory = categoryFilter.value == null
+          ? true
+          : tx.category == categoryFilter.value;
+      final tags = tagFilters.value;
+      final matchesTags = tags.isEmpty
+          ? true
+          : tags.every((tag) => tx.tags.contains(tag));
+      return matchesQuery && matchesCategory && matchesTags;
+    }).toList();
+
+    final endIndex = ((_currentPage + 1) * _pageSize);
+    final limitedEnd = endIndex.clamp(0, filtered.length) as int;
+    final slice = filtered.take(limitedEnd).toList();
+
+    final sections = _buildTimeline(slice);
+    timelineNotifier.value = sections;
+
+    if (limitedEnd < filtered.length) {
+      _currentPage += 1;
+    }
+
+    isLoading.value = false;
+  }
+
+  List<TransactionTimelineSection> _buildTimeline(
+      List<TransactionModel> items) {
+    final grouped = <DateTime, List<TransactionModel>>{};
+    for (final tx in items) {
+      final key = DateTime(tx.date.year, tx.date.month, tx.date.day);
+      grouped.putIfAbsent(key, () => <TransactionModel>[]).add(tx);
+    }
+
+    final sortedKeys = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    return [
+      for (final key in sortedKeys)
+        TransactionTimelineSection(
+          label: _formatDateLabel(key),
+          total: grouped[key]!
+              .where((tx) => tx.type == TransactionType.expense)
+              .fold<double>(0, (sum, tx) => sum + tx.amount),
+          transactions: grouped[key]!,
+          date: key,
+        ),
+    ];
+  }
+
+  Future<void> archiveTransaction(TransactionModel tx) async {
+    final index = _allTransactions.indexWhere((element) => element.id == tx.id);
+    if (index == -1) return;
+    _allTransactions.removeAt(index);
+    await _refreshTimeline(resetPage: true);
+    _recentlyArchived.add(tx);
+  }
+
+  Future<void> restoreTransaction(TransactionModel tx) async {
+    _allTransactions.insert(0, tx);
+    _allTransactions.sort((a, b) => b.date.compareTo(a.date));
+    await _refreshTimeline(resetPage: true);
+  }
+
+  Future<TransactionModel> categorizeTransaction(TransactionModel tx) async {
+    final index = _allTransactions.indexWhere((element) => element.id == tx.id);
+    if (index == -1) return tx;
+    final updatedTags = {...tx.tags, 'focus'};
+    final updated = tx.copyWith(tags: updatedTags.toList());
+    _allTransactions[index] = updated;
+    await _refreshTimeline(resetPage: true);
+    return updated;
+  }
+
+  Future<void> updateTransaction(TransactionModel tx) async {
+    final index = _allTransactions.indexWhere((element) => element.id == tx.id);
+    if (index == -1) return;
+    _allTransactions[index] = tx;
+    await _refreshTimeline(resetPage: true);
+  }
+
+  Future<void> _persistTags(Set<String> tags) async {
+    final prefs = await SharedPreferences.getInstance();
+    final encoded =
+        tags.map((tag) => base64Encode(utf8.encode(tag))).toList(growable: false);
+    await prefs.setStringList(AppConstants.prefLastTagFilters, encoded);
+  }
+
+  String _formatDateLabel(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final diff = today.difference(date).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  void dispose() {
+    timelineNotifier.dispose();
+    isLoading.dispose();
+    categoryFilter.dispose();
+    tagFilters.dispose();
+    _recentlyArchived.close();
+  }
+}

@@ -5,6 +5,10 @@ class AppConstants {
   static const String prefPrimaryColor = 'primary_color';
   static const String prefLocale = 'locale';
   static const String prefSeenOnboarding = 'seen_onboarding';
+  static const String prefBudgets = 'budgets';
+  static const String prefSearchHistory = 'search_history';
+  static const String prefLastCategoryFilter = 'last_category_filter';
+  static const String prefLastTagFilters = 'last_tag_filters';
 
   static const List<Color> primarySwatches = [
     Color(0xFF2BAA7D),
