@@ -18,7 +18,7 @@ class AppLocalizations {
   static Future<AppLocalizations> load(Locale locale) async {
     final localization = AppLocalizations(locale);
     final data = await rootBundle.loadString(
-      'assets/l10n/app_\${locale.languageCode}.arb',
+      'assets/l10n/app_${locale.languageCode}.arb',
     );
     final Map<String, dynamic> decoded = json.decode(data);
     localization._strings = decoded.map(
