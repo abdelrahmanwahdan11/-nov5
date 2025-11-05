@@ -6,8 +6,11 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'controllers/budgets_controller.dart';
 import 'controllers/display_controller.dart';
+import 'controllers/goals_controller.dart';
 import 'controllers/locale_controller.dart';
 import 'controllers/profile_controller.dart';
+import 'controllers/recipients_controller.dart';
+import 'controllers/recurring_payments_controller.dart';
 import 'controllers/search_controller.dart';
 import 'controllers/session_controller.dart';
 import 'controllers/theme_controller.dart';
@@ -41,6 +44,9 @@ Future<void> main() async {
   final profileController = await ProfileController.load();
   final walletController = await WalletController.load();
   final displayController = await DisplayController.load();
+  final goalsController = await GoalsController.load();
+  final recipientsController = await RecipientsController.load();
+  final recurringPaymentsController = await RecurringPaymentsController.load();
 
   await transactionsController.updateLocale(localeController.locale.value);
 
@@ -54,6 +60,9 @@ Future<void> main() async {
     profileController: profileController,
     walletController: walletController,
     displayController: displayController,
+    goalsController: goalsController,
+    recipientsController: recipientsController,
+    recurringPaymentsController: recurringPaymentsController,
   ));
 }
 
@@ -69,6 +78,9 @@ class MawaidApp extends StatefulWidget {
     required this.profileController,
     required this.walletController,
     required this.displayController,
+    required this.goalsController,
+    required this.recipientsController,
+    required this.recurringPaymentsController,
   });
 
   final ThemeController themeController;
@@ -80,6 +92,9 @@ class MawaidApp extends StatefulWidget {
   final ProfileController profileController;
   final WalletController walletController;
   final DisplayController displayController;
+  final GoalsController goalsController;
+  final RecipientsController recipientsController;
+  final RecurringPaymentsController recurringPaymentsController;
 
   @override
   State<MawaidApp> createState() => _MawaidAppState();
@@ -113,6 +128,9 @@ class _MawaidAppState extends State<MawaidApp> {
     widget.profileController.dispose();
     widget.walletController.dispose();
     widget.displayController.dispose();
+    widget.goalsController.dispose();
+    widget.recipientsController.dispose();
+    widget.recurringPaymentsController.dispose();
     super.dispose();
   }
 
@@ -184,6 +202,9 @@ class _MawaidAppState extends State<MawaidApp> {
             sessionController: widget.sessionController,
             profileController: widget.profileController,
             walletController: widget.walletController,
+            goalsController: widget.goalsController,
+            recipientsController: widget.recipientsController,
+            recurringPaymentsController: widget.recurringPaymentsController,
           ),
         );
     }
@@ -240,6 +261,10 @@ class _MawaidAppState extends State<MawaidApp> {
                       profileController: widget.profileController,
                       walletController: widget.walletController,
                       displayController: widget.displayController,
+                      goalsController: widget.goalsController,
+                      recipientsController: widget.recipientsController,
+                      recurringPaymentsController:
+                          widget.recurringPaymentsController,
                       child: child ?? const SizedBox.shrink(),
                     );
                   },
@@ -264,6 +289,9 @@ class HomeShell extends StatefulWidget {
     required this.sessionController,
     required this.profileController,
     required this.walletController,
+    required this.goalsController,
+    required this.recipientsController,
+    required this.recurringPaymentsController,
   });
 
   final ThemeController themeController;
@@ -274,6 +302,9 @@ class HomeShell extends StatefulWidget {
   final SessionController sessionController;
   final ProfileController profileController;
   final WalletController walletController;
+  final GoalsController goalsController;
+  final RecipientsController recipientsController;
+  final RecurringPaymentsController recurringPaymentsController;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -294,6 +325,9 @@ class _HomeShellState extends State<HomeShell> {
         walletController: widget.walletController,
         sessionController: widget.sessionController,
         profileController: widget.profileController,
+        goalsController: widget.goalsController,
+        recipientsController: widget.recipientsController,
+        recurringPaymentsController: widget.recurringPaymentsController,
         onOpenBudgets: () => setState(() => _currentIndex = 1),
         onOpenTransactions: () => setState(() => _currentIndex = 3),
       ),
@@ -301,6 +335,7 @@ class _HomeShellState extends State<HomeShell> {
         key: const PageStorageKey('budgets-page'),
         budgetsController: widget.budgetsController,
         privacyListenable: widget.sessionController.privacyModeNotifier,
+        goalsController: widget.goalsController,
       ),
       GuidesPage(
         key: const PageStorageKey('guides-page'),
@@ -311,6 +346,7 @@ class _HomeShellState extends State<HomeShell> {
         transactionsController: widget.transactionsController,
         searchController: widget.searchController,
         privacyListenable: widget.sessionController.privacyModeNotifier,
+        recurringPaymentsController: widget.recurringPaymentsController,
       ),
       SettingsPage(
         key: const PageStorageKey('settings-page'),

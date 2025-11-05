@@ -16,6 +16,8 @@ class TransactionsController {
     this.isLoading,
     this.categoryFilter,
     this.tagFilters,
+    this.selectedTransactions,
+    this.undoHistory,
   ) : _locale = const Locale('en');
 
   final List<TransactionModel> _allTransactions;
@@ -23,10 +25,14 @@ class TransactionsController {
   final ValueNotifier<bool> isLoading;
   final ValueNotifier<String?> categoryFilter;
   final ValueNotifier<Set<String>> tagFilters;
+  final ValueNotifier<Set<String>> selectedTransactions;
+  final ValueNotifier<List<TransactionsUndoEntry>> undoHistory;
   Locale _locale;
 
   final StreamController<TransactionModel> _recentlyArchived =
       StreamController.broadcast();
+
+  final List<TransactionsUndoEntry> _undoStack = <TransactionsUndoEntry>[];
 
   String? _query;
   int _currentPage = 0;
@@ -48,6 +54,8 @@ class TransactionsController {
       ValueNotifier<Set<String>>(storedTags == null
           ? <String>{}
           : storedTags.map((e) => utf8.decode(base64Decode(e))).toSet()),
+      ValueNotifier<Set<String>>(<String>{}),
+      ValueNotifier<List<TransactionsUndoEntry>>(<TransactionsUndoEntry>[]),
     );
 
     await controller._refreshTimeline(resetPage: true);
@@ -71,6 +79,10 @@ class TransactionsController {
 
   List<TransactionModel> get allTransactions =>
       List<TransactionModel>.unmodifiable(_allTransactions);
+
+  bool get hasSelection => selectedTransactions.value.isNotEmpty;
+
+  bool get canUndo => _undoStack.isNotEmpty;
 
   Future<void> applyQuery(String? query) async {
     _query = query?.trim().isEmpty ?? true ? null : query?.trim();
@@ -182,6 +194,13 @@ class TransactionsController {
     final index = _allTransactions.indexWhere((element) => element.id == tx.id);
     if (index == -1) return;
     _allTransactions.removeAt(index);
+    _pushUndo(
+      TransactionsUndoEntry(
+        type: TransactionsActionType.archive,
+        before: [tx],
+        metadata: const {'reason': 'single'},
+      ),
+    );
     await _refreshTimeline(resetPage: true);
     _recentlyArchived.add(tx);
   }
@@ -189,6 +208,10 @@ class TransactionsController {
   Future<void> restoreTransaction(TransactionModel tx) async {
     _allTransactions.insert(0, tx);
     _allTransactions.sort((a, b) => b.date.compareTo(a.date));
+    _undoStack.removeWhere((entry) =>
+        entry.type == TransactionsActionType.archive &&
+        entry.before.any((item) => item.id == tx.id));
+    undoHistory.value = List<TransactionsUndoEntry>.unmodifiable(_undoStack);
     await _refreshTimeline(resetPage: true);
   }
 
@@ -197,6 +220,14 @@ class TransactionsController {
     if (index == -1) return tx;
     final updatedTags = {...tx.tags, 'focus'};
     final updated = tx.copyWith(tags: updatedTags.toList());
+    _pushUndo(
+      TransactionsUndoEntry(
+        type: TransactionsActionType.tag,
+        before: [tx],
+        after: [updated],
+        metadata: const {'tag': 'focus'},
+      ),
+    );
     _allTransactions[index] = updated;
     await _refreshTimeline(resetPage: true);
     return updated;
@@ -207,6 +238,99 @@ class TransactionsController {
     if (index == -1) return;
     _allTransactions[index] = tx;
     await _refreshTimeline(resetPage: true);
+  }
+
+  Future<void> addManualTransaction(TransactionModel tx) async {
+    _allTransactions.insert(0, tx);
+    _allTransactions.sort((a, b) => b.date.compareTo(a.date));
+    await _refreshTimeline(resetPage: true);
+  }
+
+  void toggleSelection(String id) {
+    final selected = {...selectedTransactions.value};
+    if (selected.contains(id)) {
+      selected.remove(id);
+    } else {
+      selected.add(id);
+    }
+    selectedTransactions.value = selected;
+  }
+
+  void clearSelection() {
+    selectedTransactions.value = <String>{};
+  }
+
+  Future<void> bulkArchive(Set<String> ids) async {
+    if (ids.isEmpty) return;
+    final removed =
+        _allTransactions.where((transaction) => ids.contains(transaction.id)).toList();
+    if (removed.isEmpty) return;
+    _allTransactions.removeWhere((transaction) => ids.contains(transaction.id));
+    _pushUndo(
+      TransactionsUndoEntry(
+        type: TransactionsActionType.archive,
+        before: removed,
+        metadata: const {'reason': 'bulk'},
+      ),
+    );
+    clearSelection();
+    await _refreshTimeline(resetPage: true);
+  }
+
+  Future<void> bulkApplyTag(Set<String> ids, String tag) async {
+    if (ids.isEmpty) return;
+    final before = <TransactionModel>[];
+    final after = <TransactionModel>[];
+    for (var i = 0; i < _allTransactions.length; i++) {
+      final tx = _allTransactions[i];
+      if (!ids.contains(tx.id)) continue;
+      before.add(tx);
+      final updatedTags = {...tx.tags, tag};
+      final updated = tx.copyWith(tags: updatedTags.toList());
+      after.add(updated);
+      _allTransactions[i] = updated;
+    }
+    if (after.isEmpty) return;
+    _pushUndo(
+      TransactionsUndoEntry(
+        type: TransactionsActionType.tag,
+        before: before,
+        after: after,
+        metadata: {'tag': tag},
+      ),
+    );
+    clearSelection();
+    await _refreshTimeline(resetPage: true);
+  }
+
+  Future<void> undoLastAction() async {
+    if (_undoStack.isEmpty) return;
+    final entry = _undoStack.removeAt(0);
+    switch (entry.type) {
+      case TransactionsActionType.archive:
+        _allTransactions.addAll(entry.before);
+        _allTransactions.sort((a, b) => b.date.compareTo(a.date));
+        break;
+      case TransactionsActionType.tag:
+        for (final original in entry.before) {
+          final index =
+              _allTransactions.indexWhere((element) => element.id == original.id);
+          if (index != -1) {
+            _allTransactions[index] = original;
+          }
+        }
+        break;
+    }
+    undoHistory.value = List<TransactionsUndoEntry>.unmodifiable(_undoStack);
+    await _refreshTimeline(resetPage: true);
+  }
+
+  void _pushUndo(TransactionsUndoEntry entry) {
+    _undoStack.insert(0, entry);
+    if (_undoStack.length > 5) {
+      _undoStack.removeLast();
+    }
+    undoHistory.value = List<TransactionsUndoEntry>.unmodifiable(_undoStack);
   }
 
   Future<void> _persistTags(Set<String> tags) async {
@@ -248,6 +372,24 @@ class TransactionsController {
     isLoading.dispose();
     categoryFilter.dispose();
     tagFilters.dispose();
+    selectedTransactions.dispose();
+    undoHistory.dispose();
     _recentlyArchived.close();
   }
+}
+
+enum TransactionsActionType { archive, tag }
+
+class TransactionsUndoEntry {
+  const TransactionsUndoEntry({
+    required this.type,
+    required this.before,
+    this.after,
+    this.metadata,
+  });
+
+  final TransactionsActionType type;
+  final List<TransactionModel> before;
+  final List<TransactionModel>? after;
+  final Map<String, Object?>? metadata;
 }

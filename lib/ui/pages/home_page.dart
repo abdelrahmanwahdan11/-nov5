@@ -5,7 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../controllers/budgets_controller.dart';
+import '../../controllers/goals_controller.dart';
 import '../../controllers/profile_controller.dart';
+import '../../controllers/recipients_controller.dart';
+import '../../controllers/recurring_payments_controller.dart';
 import '../../controllers/search_controller.dart';
 import '../../controllers/session_controller.dart';
 import '../../controllers/transactions_controller.dart';
@@ -15,9 +18,12 @@ import '../../core/routing/app_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_constants.dart';
 import '../../data/models/budget.dart';
+import '../../data/models/recipient.dart';
+import '../../data/models/savings_goal.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/transaction_timeline.dart';
 import '../../data/models/wallet_card.dart';
+import '../../data/models/recurring_payment.dart';
 import '../widgets/budget_card.dart';
 import '../widgets/transaction_preview_card.dart';
 import '../widgets/wallet_card_carousel.dart';
@@ -33,6 +39,9 @@ class HomePage extends StatefulWidget {
     required this.walletController,
     required this.sessionController,
     required this.profileController,
+    required this.goalsController,
+    required this.recipientsController,
+    required this.recurringPaymentsController,
     required this.onOpenBudgets,
     required this.onOpenTransactions,
   });
@@ -43,6 +52,9 @@ class HomePage extends StatefulWidget {
   final WalletController walletController;
   final SessionController sessionController;
   final ProfileController profileController;
+  final GoalsController goalsController;
+  final RecipientsController recipientsController;
+  final RecurringPaymentsController recurringPaymentsController;
   final VoidCallback onOpenBudgets;
   final VoidCallback onOpenTransactions;
 
@@ -114,6 +126,147 @@ class _HomePageState extends State<HomePage> {
         );
       }
     });
+  }
+
+  Future<void> _handleQuickSend(RecipientModel recipient) async {
+    final t = AppLocalizations.of(context);
+    final amountController = TextEditingController(
+      text: recipient.quickAmount.toStringAsFixed(0),
+    );
+    final formKey = GlobalKey<FormState>();
+
+    final amount = await showDialog<double>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(t.translate('quickSendTitleRecipient',
+              params: {'name': recipient.name})),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: amountController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: t.translate('quickSendAmountLabel'),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return t.translate('required');
+                }
+                final parsed = double.tryParse(value);
+                if (parsed == null || parsed <= 0) {
+                  return t.translate('invalidNumber');
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(t.translate('cancel')),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(
+                    context,
+                    double.parse(amountController.text),
+                  );
+                }
+              },
+              child: Text(t.translate('confirm')),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (amount == null || amount <= 0) {
+      return;
+    }
+
+    await widget.recipientsController.setQuickAmount(recipient.id, amount);
+
+    final tx = TransactionModel(
+      id: 'quick_${DateTime.now().millisecondsSinceEpoch}_${recipient.id}',
+      title: t.translate('quickSendTransactionTitle'),
+      description: recipient.name,
+      amount: amount,
+      currency: recipient.currency,
+      category: 'Transfers',
+      tags: ['quick-send', 'favorite'],
+      date: DateTime.now(),
+      type: TransactionType.expense,
+      status: TransactionStatus.completed,
+      merchant: recipient.handle,
+    );
+
+    await widget.transactionsController.addManualTransaction(tx);
+    widget.searchController
+        .rebuildSource(widget.transactionsController.allTransactions);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          t.translate('quickSendSuccess', params: {
+            'name': recipient.name,
+            'amount': amount.toStringAsFixed(0),
+          }),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _manageFavorites() async {
+    final t = AppLocalizations.of(context);
+    final recipients = widget.recipientsController.allRecipients;
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 16),
+                Text(
+                  t.translate('quickSendManage'),
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: recipients.length,
+                    itemBuilder: (context, index) {
+                      final person = recipients[index];
+                      return SwitchListTile(
+                        value: person.isFavorite,
+                        onChanged: (_) => widget.recipientsController
+                            .toggleFavorite(person.id),
+                        title: Text(person.name),
+                        subtitle: Text(person.handle),
+                        secondary: CircleAvatar(
+                          backgroundImage: NetworkImage(person.avatarUrl),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -309,7 +462,68 @@ class _HomePageState extends State<HomePage> {
                         privacyListenable:
                             widget.sessionController.privacyModeNotifier,
                       ),
-                      const SizedBox(height: 28),
+                      ValueListenableBuilder<List<RecipientModel>>(
+                        valueListenable:
+                            widget.recipientsController.favoritesNotifier,
+                        builder: (context, favorites, _) {
+                          if (favorites.isEmpty) {
+                            return const SizedBox(height: 24);
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 24),
+                              _QuickSendStrip(
+                                favorites: favorites,
+                                localization: t,
+                                onSend: _handleQuickSend,
+                                onManage: _manageFavorites,
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      ValueListenableBuilder<List<SavingsGoalModel>>(
+                        valueListenable: widget.goalsController.goalsNotifier,
+                        builder: (context, goals, _) {
+                          if (goals.isEmpty) {
+                            return const SizedBox(height: 20);
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 24),
+                              _GoalsPeek(
+                                goals: goals,
+                                localization: t,
+                                onViewAll: widget.onOpenBudgets,
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      ValueListenableBuilder<List<RecurringPaymentModel>>(
+                        valueListenable:
+                            widget.recurringPaymentsController.paymentsNotifier,
+                        builder: (context, scheduled, _) {
+                          if (scheduled.isEmpty) {
+                            return const SizedBox(height: 20);
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 20),
+                              _UpcomingRecurringBanner(
+                                payment: (List<RecurringPaymentModel>.from(scheduled)
+                                      ..sort((a, b) => a.nextDate.compareTo(b.nextDate)))[0],
+                                localization: t,
+                                onOpenTransactions: widget.onOpenTransactions,
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -729,6 +943,289 @@ class _CoachCard extends StatelessWidget {
         ),
       ),
     ).animate().fadeIn(duration: 320.ms).slideY(begin: 0.2, end: 0);
+  }
+}
+
+class _QuickSendStrip extends StatelessWidget {
+  const _QuickSendStrip({
+    required this.favorites,
+    required this.localization,
+    required this.onSend,
+    required this.onManage,
+  });
+
+  final List<RecipientModel> favorites;
+  final AppLocalizations localization;
+  final void Function(RecipientModel recipient) onSend;
+  final VoidCallback onManage;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = localization;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              t.translate('quickSendTitle'),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+            const Spacer(),
+            TextButton(
+              onPressed: onManage,
+              child: Text(t.translate('quickSendManage')),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 120,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: favorites.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final recipient = favorites[index];
+              return _QuickSendCard(
+                recipient: recipient,
+                localization: t,
+                onSend: () => onSend(recipient),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickSendCard extends StatelessWidget {
+  const _QuickSendCard({
+    required this.recipient,
+    required this.localization,
+    required this.onSend,
+  });
+
+  final RecipientModel recipient;
+  final AppLocalizations localization;
+  final VoidCallback onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final amountLabel = localization.translate('quickSendAmountShort', params: {
+      'amount': recipient.quickAmount.toStringAsFixed(0),
+      'currency': recipient.currency,
+    });
+
+    return Container(
+      width: 120,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        color: theme.colorScheme.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundImage: NetworkImage(recipient.avatarUrl),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    recipient.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            Text(
+              amountLabel,
+              style: theme.textTheme.labelMedium,
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.tonal(
+                onPressed: onSend,
+                child: Text(localization.translate('quickSendAction')),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GoalsPeek extends StatelessWidget {
+  const _GoalsPeek({
+    required this.goals,
+    required this.localization,
+    required this.onViewAll,
+  });
+
+  final List<SavingsGoalModel> goals;
+  final AppLocalizations localization;
+  final VoidCallback onViewAll;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final totalTarget = goals.fold<double>(0, (sum, goal) => sum + goal.targetAmount);
+    final totalSaved = goals.fold<double>(0, (sum, goal) => sum + goal.currentAmount);
+    final highlight = goals.take(2).toList();
+    final summary = localization.translate('goalsPeekSummary', params: {
+      'saved': totalSaved.toStringAsFixed(0),
+      'target': totalTarget.toStringAsFixed(0),
+    });
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(
+                  localization.translate('goalsPeekTitle'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: onViewAll,
+                  child: Text(localization.translate('viewAll')),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              summary,
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            for (final goal in highlight)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      goal.name,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: LinearProgressIndicator(
+                        value: goal.progress,
+                        minHeight: 6,
+                        backgroundColor:
+                            theme.colorScheme.onSurface.withOpacity(0.08),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(goal.color),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UpcomingRecurringBanner extends StatelessWidget {
+  const _UpcomingRecurringBanner({
+    required this.payment,
+    required this.localization,
+    required this.onOpenTransactions,
+  });
+
+  final RecurringPaymentModel payment;
+  final AppLocalizations localization;
+  final VoidCallback onOpenTransactions;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final next =
+        '${payment.nextDate.month.toString().padLeft(2, '0')}/${payment.nextDate.day.toString().padLeft(2, '0')}';
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: [
+            theme.colorScheme.primary.withOpacity(0.18),
+            theme.colorScheme.primary.withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  localization.translate('upcomingRecurringTitle'),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${payment.title} — ${payment.amount.toStringAsFixed(0)} ${payment.currency}',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  localization.translate('recurringNext', params: {'date': next}),
+                  style: theme.textTheme.labelMedium,
+                ),
+              ],
+            ),
+          ),
+          FilledButton.tonal(
+            onPressed: onOpenTransactions,
+            child: Text(localization.translate('upcomingRecurringButton')),
+          ),
+        ],
+      ),
+    );
   }
 }
 

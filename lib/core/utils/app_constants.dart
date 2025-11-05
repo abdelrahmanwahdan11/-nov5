@@ -21,6 +21,11 @@ class AppConstants {
   static const String prefSeenCoach = 'seen_home_coach';
   static const String prefCardStyle = 'card_surface_style';
   static const String prefReduceMotion = 'reduce_motion_enabled';
+  static const String prefSavingsGoals = 'savings_goals';
+  static const String prefRecurringPayments = 'recurring_payments';
+  static const String prefRecipients = 'all_recipients';
+  static const String prefFavoriteRecipients = 'favorite_recipient_ids';
+  static const String prefQuickSendAmounts = 'quick_send_amounts';
 
   static const List<Color> primarySwatches = [
     Color(0xFF2BAA7D),

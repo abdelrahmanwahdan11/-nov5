@@ -2,8 +2,11 @@ import 'package:flutter/widgets.dart';
 
 import '../../controllers/budgets_controller.dart';
 import '../../controllers/display_controller.dart';
+import '../../controllers/goals_controller.dart';
 import '../../controllers/locale_controller.dart';
 import '../../controllers/profile_controller.dart';
+import '../../controllers/recipients_controller.dart';
+import '../../controllers/recurring_payments_controller.dart';
 import '../../controllers/search_controller.dart';
 import '../../controllers/session_controller.dart';
 import '../../controllers/theme_controller.dart';
@@ -22,6 +25,9 @@ class AppScope extends InheritedWidget {
     required this.profileController,
     required this.walletController,
     required this.displayController,
+    required this.goalsController,
+    required this.recipientsController,
+    required this.recurringPaymentsController,
     required super.child,
   });
 
@@ -34,6 +40,9 @@ class AppScope extends InheritedWidget {
   final ProfileController profileController;
   final WalletController walletController;
   final DisplayController displayController;
+  final GoalsController goalsController;
+  final RecipientsController recipientsController;
+  final RecurringPaymentsController recurringPaymentsController;
 
   static AppScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
@@ -55,6 +64,9 @@ class AppScope extends InheritedWidget {
         oldWidget.sessionController != sessionController ||
         oldWidget.profileController != profileController ||
         oldWidget.walletController != walletController ||
-        oldWidget.displayController != displayController;
+        oldWidget.displayController != displayController ||
+        oldWidget.goalsController != goalsController ||
+        oldWidget.recipientsController != recipientsController ||
+        oldWidget.recurringPaymentsController != recurringPaymentsController;
   }
 }

@@ -23,7 +23,7 @@ class SearchController {
     return SearchController._(
       ValueNotifier<List<String>>(<String>[]),
       ValueNotifier<List<String>>(decoded),
-      transactions,
+      List<TransactionModel>.from(transactions),
     );
   }
 
@@ -75,5 +75,14 @@ class SearchController {
   void dispose() {
     suggestions.dispose();
     historyNotifier.dispose();
+  }
+
+  void rebuildSource(List<TransactionModel> transactions) {
+    _source
+      ..clear()
+      ..addAll(transactions);
+    if (_currentQuery.isNotEmpty) {
+      updateQuery(_currentQuery);
+    }
   }
 }
