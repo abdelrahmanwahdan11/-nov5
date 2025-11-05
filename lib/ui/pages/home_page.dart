@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,7 +11,9 @@ import '../../controllers/session_controller.dart';
 import '../../controllers/transactions_controller.dart';
 import '../../controllers/wallet_controller.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/routing/app_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_constants.dart';
 import '../../data/models/budget.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/transaction_timeline.dart';
@@ -20,6 +21,7 @@ import '../../data/models/wallet_card.dart';
 import '../widgets/budget_card.dart';
 import '../widgets/transaction_preview_card.dart';
 import '../widgets/wallet_card_carousel.dart';
+import '../widgets/wallet_card_composer.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -50,14 +52,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final TextEditingController _searchFieldController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  static const _currencyOptions = ['USD', 'EUR', 'AED', 'SAR'];
-  static const _networkOptions = ['VISA', 'Mastercard', 'UnionPay', 'Amethyst'];
-  static const List<List<int>> _cardGradients = [
-    [0xFF2BAA7D, 0xFF58C6A3],
-    [0xFF3A7BFF, 0xFF7FA6FF],
-    [0xFF9B5DE5, 0xFFB48BFF],
-    [0xFFFF8A3D, 0xFFFFB37A],
-  ];
 
   @override
   void initState() {
@@ -79,11 +73,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _presentAddCardSheet(AppLocalizations t) {
-    final titleController = TextEditingController();
-    final amountController = TextEditingController();
-    final currency = ValueNotifier<String>(_currencyOptions.first);
-    final network = ValueNotifier<String>(_networkOptions.first);
-    showModalBottomSheet<void>(
+    showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -97,48 +87,31 @@ class _HomePageState extends State<HomePage> {
             top: 24,
             bottom: MediaQuery.of(context).viewInsets.bottom + 24,
           ),
-          child: _AddWalletCardSheet(
-            titleController: titleController,
-            amountController: amountController,
-            currency: currency,
-            network: network,
+          child: WalletCardComposer(
+            localization: t,
+            currencyOptions: AppConstants.walletCurrencies,
+            networkOptions: AppConstants.walletNetworks,
             onSubmit: (title, amount, selectedCurrency, selectedNetwork) {
-              final random = Random();
-              final digits = List.generate(4, (_) => random.nextInt(9000) + 1000)
-                  .join(' ');
-              final expiryMonth = (random.nextInt(12) + 1).toString().padLeft(2, '0');
-              final expiryYear = (DateTime.now().year + 2 + random.nextInt(5))
-                  .toString()
-                  .substring(2);
-              final gradient =
-                  _cardGradients[random.nextInt(_cardGradients.length)];
-              widget.walletController.addCard(
-                WalletCardModel(
-                  id: 'wallet_${DateTime.now().millisecondsSinceEpoch}',
-                  title: title,
-                  holderName: widget.profileController.nameNotifier.value,
-                  cardNumber: digits,
-                  balance: amount,
-                  currency: selectedCurrency,
-                  gradient: gradient,
-                  expiry: '$expiryMonth/$expiryYear',
-                  network: selectedNetwork,
-                ),
+              final holder = widget.profileController.nameNotifier.value;
+              final card = widget.walletController.composeCard(
+                title: title,
+                balance: amount,
+                currency: selectedCurrency,
+                network: selectedNetwork,
+                holderName: holder.isEmpty ? 'Mawaid' : holder,
               );
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(t.translate('walletCardAdded'))),
-              );
+              widget.walletController.addCard(card);
+              return true;
             },
-            t: t,
           ),
         );
       },
-    ).whenComplete(() {
-      titleController.dispose();
-      amountController.dispose();
-      currency.dispose();
-      network.dispose();
+    ).then((accepted) {
+      if (accepted == true && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(t.translate('walletCardAdded'))),
+        );
+      }
     });
   }
 
@@ -255,10 +228,27 @@ class _HomePageState extends State<HomePage> {
                               ],
                             ),
                           ),
-                          IconButton(
-                            tooltip: t.translate('walletAddCard'),
-                            onPressed: () => _presentAddCardSheet(t),
-                            icon: const Icon(Icons.add_card_rounded),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              IconButton(
+                                tooltip: t.translate('walletAddCard'),
+                                onPressed: () => _presentAddCardSheet(t),
+                                icon: const Icon(Icons.add_card_rounded),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pushNamed(AppRouter.wallets);
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: const Size(0, 0),
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Text(t.translate('walletManage')),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -764,130 +754,3 @@ class _CoachHint {
   final String label;
 }
 
-class _AddWalletCardSheet extends StatefulWidget {
-  const _AddWalletCardSheet({
-    required this.titleController,
-    required this.amountController,
-    required this.currency,
-    required this.network,
-    required this.onSubmit,
-    required this.t,
-  });
-
-  final TextEditingController titleController;
-  final TextEditingController amountController;
-  final ValueNotifier<String> currency;
-  final ValueNotifier<String> network;
-  final void Function(String title, double amount, String currency, String network)
-      onSubmit;
-  final AppLocalizations t;
-
-  @override
-  State<_AddWalletCardSheet> createState() => _AddWalletCardSheetState();
-}
-
-class _AddWalletCardSheetState extends State<_AddWalletCardSheet> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  void _submit() {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-    final parsed = double.tryParse(widget.amountController.text.replaceAll(',', '.'));
-    if (parsed == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(widget.t.translate('invalidAmount'))),
-      );
-      return;
-    }
-    widget.onSubmit(
-      widget.titleController.text.trim(),
-      parsed,
-      widget.currency.value,
-      widget.network.value,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            widget.t.translate('walletAddTitle'),
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: widget.titleController,
-            decoration: InputDecoration(
-              labelText: widget.t.translate('walletNameLabel'),
-            ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return widget.t.translate('required');
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: widget.amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: InputDecoration(
-              labelText: widget.t.translate('walletAmountLabel'),
-            ),
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return widget.t.translate('required');
-              }
-              return double.tryParse(value.replaceAll(',', '.')) == null
-                  ? widget.t.translate('invalidAmount')
-                  : null;
-            },
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            value: widget.currency.value,
-            decoration: InputDecoration(
-              labelText: widget.t.translate('walletCurrencyLabel'),
-            ),
-            items: _HomePageState._currencyOptions
-                .map((code) => DropdownMenuItem(value: code, child: Text(code)))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) widget.currency.value = value;
-            },
-          ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            value: widget.network.value,
-            decoration: InputDecoration(
-              labelText: widget.t.translate('walletNetworkLabel'),
-            ),
-            items: _HomePageState._networkOptions
-                .map((net) => DropdownMenuItem(value: net, child: Text(net)))
-                .toList(),
-            onChanged: (value) {
-              if (value != null) widget.network.value = value;
-            },
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _submit,
-              child: Text(widget.t.translate('walletSaveCard')),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

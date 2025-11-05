@@ -84,6 +84,33 @@ class WalletController {
     activeCardIndex.value = cards.length - 1;
   }
 
+  WalletCardModel composeCard({
+    required String title,
+    required double balance,
+    required String currency,
+    required String network,
+    required String holderName,
+  }) {
+    final random = Random();
+    final digits = List.generate(4, (_) => random.nextInt(9000) + 1000).join(' ');
+    final expiryMonth = (random.nextInt(12) + 1).toString().padLeft(2, '0');
+    final expiryYear = (DateTime.now().year + 2 + random.nextInt(5)).toString().substring(2);
+    final gradient = AppConstants
+        .walletGradients[random.nextInt(AppConstants.walletGradients.length)];
+
+    return WalletCardModel(
+      id: 'wallet_${DateTime.now().millisecondsSinceEpoch}',
+      title: title,
+      holderName: holderName,
+      cardNumber: digits,
+      balance: balance,
+      currency: currency,
+      gradient: gradient,
+      expiry: '$expiryMonth/$expiryYear',
+      network: network,
+    );
+  }
+
   void updateBalance(String cardId, double delta) {
     final cards = cardsNotifier.value.map((card) {
       if (card.id == cardId) {
@@ -101,6 +128,23 @@ class WalletController {
     if (activeCardIndex.value >= cards.length) {
       activeCardIndex.value = cards.isEmpty ? 0 : cards.length - 1;
     }
+  }
+
+  void reorderCards(int oldIndex, int newIndex) {
+    final cards = List<WalletCardModel>.from(cardsNotifier.value);
+    if (oldIndex < 0 || oldIndex >= cards.length) {
+      return;
+    }
+    if (newIndex > cards.length) {
+      newIndex = cards.length;
+    }
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+    final card = cards.removeAt(oldIndex);
+    cards.insert(newIndex, card);
+    cardsNotifier.value = cards;
+    activeCardIndex.value = newIndex;
   }
 
   void dispose() {

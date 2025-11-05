@@ -26,6 +26,7 @@ import 'ui/pages/home_page.dart';
 import 'ui/pages/onboarding_page.dart';
 import 'ui/pages/settings_page.dart';
 import 'ui/pages/transactions_page.dart';
+import 'ui/pages/wallets_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -155,6 +156,14 @@ class _MawaidAppState extends State<MawaidApp> {
           settings,
           (_) => const ForgotPasswordPage(),
         );
+      case AppRouter.wallets:
+        return AppRouter.buildRoute(
+          settings,
+          (_) => WalletsPage(
+            walletController: widget.walletController,
+            profileController: widget.profileController,
+          ),
+        );
       case AppRouter.home:
       default:
         return AppRouter.buildRoute(
@@ -264,11 +273,13 @@ class HomeShell extends StatefulWidget {
 
 class _HomeShellState extends State<HomeShell> {
   int _currentIndex = 0;
+  final PageStorageBucket _bucket = PageStorageBucket();
 
   @override
   Widget build(BuildContext context) {
     final pages = [
       HomePage(
+        key: const PageStorageKey('home-page'),
         transactionsController: widget.transactionsController,
         budgetsController: widget.budgetsController,
         searchController: widget.searchController,
@@ -279,14 +290,20 @@ class _HomeShellState extends State<HomeShell> {
         onOpenTransactions: () => setState(() => _currentIndex = 3),
       ),
       BudgetsPage(
+        key: const PageStorageKey('budgets-page'),
         budgetsController: widget.budgetsController,
       ),
-      GuidesPage(profileController: widget.profileController),
+      GuidesPage(
+        key: const PageStorageKey('guides-page'),
+        profileController: widget.profileController,
+      ),
       TransactionsPage(
+        key: const PageStorageKey('transactions-page'),
         transactionsController: widget.transactionsController,
         searchController: widget.searchController,
       ),
       SettingsPage(
+        key: const PageStorageKey('settings-page'),
         themeController: widget.themeController,
         localeController: widget.localeController,
         sessionController: widget.sessionController,
@@ -301,7 +318,13 @@ class _HomeShellState extends State<HomeShell> {
           valueListenable: widget.localeController.locale,
           builder: (context, locale, __) {
             return Scaffold(
-              body: pages[_currentIndex],
+              body: PageStorage(
+                bucket: _bucket,
+                child: IndexedStack(
+                  index: _currentIndex,
+                  children: pages,
+                ),
+              ),
               bottomNavigationBar: _AnimatedBottomNav(
                 currentIndex: _currentIndex,
                 onChanged: (value) => setState(() => _currentIndex = value),

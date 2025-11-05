@@ -27,4 +27,13 @@ class AppConstants {
     Color(0xFFEF4565),
     Color(0xFF1FA7FF),
   ];
+
+  static const List<String> walletCurrencies = ['USD', 'EUR', 'AED', 'SAR'];
+  static const List<String> walletNetworks = ['VISA', 'Mastercard', 'UnionPay', 'Amethyst'];
+  static const List<List<int>> walletGradients = [
+    [0xFF2BAA7D, 0xFF58C6A3],
+    [0xFF3A7BFF, 0xFF7FA6FF],
+    [0xFF9B5DE5, 0xFFB48BFF],
+    [0xFFFF8A3D, 0xFFFFB37A],
+  ];
 }

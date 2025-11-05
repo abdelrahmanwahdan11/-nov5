@@ -9,6 +9,7 @@ class AppRouter {
   static const signup = '/auth/signup';
   static const forgotPassword = '/auth/forgot';
   static const home = '/home';
+  static const wallets = '/wallets';
 
   static String routeForEntry(AppEntryState state) {
     switch (state) {

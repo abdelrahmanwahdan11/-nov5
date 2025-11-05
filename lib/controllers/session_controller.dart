@@ -65,6 +65,9 @@ class SessionController {
     await _prefs.setBool(AppConstants.prefIsAuthenticated, false);
     _isAuthenticated = false;
     isGuestNotifier.value = true;
+    if (!_hasSeenCoach) {
+      showCoachNotifier.value = true;
+    }
     entryState.value = AppEntryState.home;
   }
 
@@ -74,15 +77,18 @@ class SessionController {
     await _prefs.setBool(AppConstants.prefIsGuest, false);
     _isAuthenticated = true;
     isGuestNotifier.value = false;
+    if (!_hasSeenCoach) {
+      showCoachNotifier.value = true;
+    }
     entryState.value = AppEntryState.home;
   }
 
   Future<void> signOut() async {
     _isAuthenticated = false;
     isGuestNotifier.value = false;
-    await _prefs
-      ..setBool(AppConstants.prefIsAuthenticated, false)
-      ..setBool(AppConstants.prefIsGuest, false);
+    showCoachNotifier.value = false;
+    await _prefs.setBool(AppConstants.prefIsAuthenticated, false);
+    await _prefs.setBool(AppConstants.prefIsGuest, false);
     entryState.value = AppEntryState.auth;
   }
 
