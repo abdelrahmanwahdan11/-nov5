@@ -95,6 +95,39 @@ class TransactionsController {
       }
     }
 
+    final savedViewsRaw =
+        prefs.getStringList(AppConstants.prefSavedTransactionViews) ?? const [];
+    final savedViewDefinitions = <TransactionFilterDefinition>[];
+    final seenSavedViewIds = <String>{};
+    var savedViewsWereSanitized = false;
+    for (final entry in savedViewsRaw) {
+      try {
+        final definition = TransactionFilterDefinition.fromJson(entry);
+        if (seenSavedViewIds.add(definition.id)) {
+          savedViewDefinitions.add(definition);
+        } else {
+          savedViewsWereSanitized = true;
+        }
+      } on FormatException {
+        savedViewsWereSanitized = true;
+      } on TypeError {
+        savedViewsWereSanitized = true;
+      }
+    }
+    if (savedViewsWereSanitized) {
+      final sanitizedSavedViews = savedViewDefinitions
+          .map((definition) => definition.toJson())
+          .toList(growable: false);
+      await prefs.setStringList(
+        AppConstants.prefSavedTransactionViews,
+        sanitizedSavedViews,
+      );
+    }
+
+    savedViewDefinitions.sort(
+      (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+    );
+
     final controller = TransactionsController._(
       data,
       ValueNotifier<List<TransactionTimelineSection>>(<TransactionTimelineSection>[]),
@@ -103,6 +136,11 @@ class TransactionsController {
       ValueNotifier<Set<String>>(Set<String>.from(initialTags)),
       ValueNotifier<Set<String>>(<String>{}),
       ValueNotifier<List<TransactionsUndoEntry>>(<TransactionsUndoEntry>[]),
+      ValueNotifier<List<TransactionFilterDefinition>>(
+        List<TransactionFilterDefinition>.unmodifiable(savedViewDefinitions),
+      ),
+      ValueNotifier<TransactionFilterDefinition?>(null),
+      prefs,
     );
 
     await controller._refreshTimeline(resetPage: true);
@@ -471,6 +509,59 @@ class TransactionsController {
     await _prefs.setStringList(AppConstants.prefLastTagFilters, encoded);
   }
 
+  Future<void> _persistSavedViews() async {
+    final encoded = savedViews.value
+        .map((definition) => definition.toJson())
+        .toList(growable: false);
+    await _prefs.setStringList(AppConstants.prefSavedTransactionViews, encoded);
+  }
+
+  bool _matchesAdvancedFilter(TransactionModel transaction) {
+    final definition = _activeAdvancedFilter;
+    if (definition == null) {
+      return true;
+    }
+
+    if (definition.minAmount != null &&
+        transaction.amount < definition.minAmount!) {
+      return false;
+    }
+    if (definition.maxAmount != null &&
+        transaction.amount > definition.maxAmount!) {
+      return false;
+    }
+    if (definition.startDate != null &&
+        transaction.date.isBefore(definition.startDate!)) {
+      return false;
+    }
+    if (definition.endDate != null &&
+        transaction.date.isAfter(definition.endDate!)) {
+      return false;
+    }
+    if (definition.type != null && transaction.type != definition.type) {
+      return false;
+    }
+    if (definition.status != null && transaction.status != definition.status) {
+      return false;
+    }
+    if (definition.category != null &&
+        transaction.category != definition.category) {
+      return false;
+    }
+    if (definition.tags.isNotEmpty &&
+        !definition.tags.every(transaction.tags.contains)) {
+      return false;
+    }
+    if (definition.merchant != null &&
+        definition.merchant!.trim().isNotEmpty &&
+        !transaction.merchant
+            .toLowerCase()
+            .contains(definition.merchant!.toLowerCase().trim())) {
+      return false;
+    }
+    return true;
+  }
+
   String _formatDateLabel(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -505,6 +596,8 @@ class TransactionsController {
     tagFilters.dispose();
     selectedTransactions.dispose();
     undoHistory.dispose();
+    savedViews.dispose();
+    activeView.dispose();
     _recentlyArchived.close();
     _listeners.clear();
   }
