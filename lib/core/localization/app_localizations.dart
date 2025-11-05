@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -15,15 +14,40 @@ class AppLocalizations {
 
   static const supportedLocales = [Locale('en'), Locale('ar')];
 
-  static Future<AppLocalizations> load(Locale locale) async {
-    final localization = AppLocalizations(locale);
-    final data = await rootBundle.loadString(
-      'assets/l10n/app_${locale.languageCode}.arb',
-    );
-    final Map<String, dynamic> decoded = json.decode(data);
-    localization._strings = decoded.map(
+  static Map<String, String>? _englishFallback;
+
+  static Future<void> _ensureFallbackLoaded() async {
+    if (_englishFallback != null) {
+      return;
+    }
+    final data = await rootBundle.loadString('assets/l10n/app_en.arb');
+    final Map<String, dynamic> decoded = json.decode(data) as Map<String, dynamic>;
+    _englishFallback = decoded.map(
       (key, value) => MapEntry(key, value.toString()),
     );
+  }
+
+  static Future<AppLocalizations> load(Locale locale) async {
+    await _ensureFallbackLoaded();
+    final localization = AppLocalizations(locale);
+    final languageCode = locale.languageCode.toLowerCase();
+
+    if (languageCode == 'en') {
+      localization._strings = Map<String, String>.from(_englishFallback!);
+      return localization;
+    }
+
+    final data = await rootBundle.loadString('assets/l10n/app_$languageCode.arb');
+    final Map<String, dynamic> decoded = json.decode(data) as Map<String, dynamic>;
+    final localizedStrings = decoded.map(
+      (key, value) => MapEntry(key, value.toString()),
+    );
+
+    localization._strings = {
+      ..._englishFallback!,
+      ...localizedStrings,
+    };
+
     return localization;
   }
 
@@ -31,8 +55,14 @@ class AppLocalizations {
     return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
   }
 
-  String translate(String key) {
-    return _strings[key] ?? key;
+  String translate(String key, {Map<String, String>? params}) {
+    var value = _strings[key] ?? key;
+    if (params != null && params.isNotEmpty) {
+      params.forEach((placeholder, replacement) {
+        value = value.replaceAll('{$placeholder}', replacement);
+      });
+    }
+    return value;
   }
 }
 

@@ -19,7 +19,30 @@ class SearchController {
       List<TransactionModel> transactions) async {
     final prefs = await SharedPreferences.getInstance();
     final stored = prefs.getStringList(AppConstants.prefSearchHistory) ?? <String>[];
-    final decoded = stored.map((value) => utf8.decode(base64Decode(value))).toList();
+    final decoded = <String>[];
+    var sanitized = false;
+    for (final value in stored) {
+      try {
+        final entry = utf8.decode(base64Decode(value)).trim();
+        if (entry.isEmpty) {
+          sanitized = true;
+          continue;
+        }
+        if (decoded.contains(entry)) {
+          sanitized = true;
+          continue;
+        }
+        decoded.add(entry);
+      } on FormatException {
+        sanitized = true;
+      }
+    }
+    if (sanitized) {
+      await prefs.setStringList(
+        AppConstants.prefSearchHistory,
+        decoded.map((value) => base64Encode(utf8.encode(value))).toList(),
+      );
+    }
     return SearchController._(
       ValueNotifier<List<String>>(<String>[]),
       ValueNotifier<List<String>>(decoded),

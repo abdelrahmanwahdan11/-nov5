@@ -46,14 +46,50 @@ class TransactionsController {
     final storedCategory = prefs.getString(AppConstants.prefLastCategoryFilter);
     final storedTags = prefs.getStringList(AppConstants.prefLastTagFilters);
 
+    String? initialCategory;
+    if (storedCategory != null &&
+        data.any((transaction) => transaction.category == storedCategory)) {
+      initialCategory = storedCategory;
+    } else if (storedCategory != null) {
+      await prefs.remove(AppConstants.prefLastCategoryFilter);
+    }
+
+    final availableTags = data.expand((tx) => tx.tags).toSet();
+    final initialTags = <String>{};
+    final sanitizedEncoded = <String>[];
+    var tagsWereSanitized = false;
+    if (storedTags != null) {
+      for (final encoded in storedTags) {
+        try {
+          final decoded = utf8.decode(base64Decode(encoded));
+          if (!availableTags.contains(decoded)) {
+            tagsWereSanitized = true;
+            continue;
+          }
+          final inserted = initialTags.add(decoded);
+          if (!inserted) {
+            tagsWereSanitized = true;
+            continue;
+          }
+          sanitizedEncoded.add(base64Encode(utf8.encode(decoded)));
+        } on FormatException {
+          tagsWereSanitized = true;
+        }
+      }
+      if (tagsWereSanitized) {
+        await prefs.setStringList(
+          AppConstants.prefLastTagFilters,
+          sanitizedEncoded,
+        );
+      }
+    }
+
     final controller = TransactionsController._(
       data,
       ValueNotifier<List<TransactionTimelineSection>>(<TransactionTimelineSection>[]),
       ValueNotifier<bool>(false),
-      ValueNotifier<String?>(storedCategory),
-      ValueNotifier<Set<String>>(storedTags == null
-          ? <String>{}
-          : storedTags.map((e) => utf8.decode(base64Decode(e))).toSet()),
+      ValueNotifier<String?>(initialCategory),
+      ValueNotifier<Set<String>>(Set<String>.from(initialTags)),
       ValueNotifier<Set<String>>(<String>{}),
       ValueNotifier<List<TransactionsUndoEntry>>(<TransactionsUndoEntry>[]),
     );

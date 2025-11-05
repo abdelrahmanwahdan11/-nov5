@@ -104,6 +104,8 @@ class _MawaidAppState extends State<MawaidApp> {
   late final GlobalKey<NavigatorState> _navigatorKey;
   late final String _initialRoute;
   late AppEntryState _currentEntry;
+  String? _pendingRoute;
+  bool _pendingFlushScheduled = false;
 
   @override
   void initState() {
@@ -143,10 +145,36 @@ class _MawaidAppState extends State<MawaidApp> {
     final next = widget.sessionController.entryState.value;
     if (next == _currentEntry) return;
     _currentEntry = next;
-    final navigator = _navigatorKey.currentState;
-    if (navigator == null) return;
     final route = AppRouter.routeForEntry(next);
+    final navigator = _navigatorKey.currentState;
+    if (navigator == null) {
+      _pendingRoute = route;
+      _schedulePendingNavigation();
+      return;
+    }
+    _pendingRoute = null;
     navigator.pushNamedAndRemoveUntil(route, (route) => false);
+  }
+
+  void _schedulePendingNavigation() {
+    if (_pendingFlushScheduled) {
+      return;
+    }
+    _pendingFlushScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pendingFlushScheduled = false;
+      if (_pendingRoute == null) {
+        return;
+      }
+      final navigator = _navigatorKey.currentState;
+      if (navigator == null) {
+        _schedulePendingNavigation();
+        return;
+      }
+      final route = _pendingRoute!;
+      _pendingRoute = null;
+      navigator.pushNamedAndRemoveUntil(route, (route) => false);
+    });
   }
 
   Route<dynamic> _onGenerateRoute(RouteSettings settings) {
