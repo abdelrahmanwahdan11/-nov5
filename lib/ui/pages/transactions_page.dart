@@ -9,9 +9,12 @@ import '../../core/localization/app_localizations.dart';
 import '../../core/routing/app_router.dart';
 import '../../data/models/recurring_payment.dart';
 import '../../data/models/transaction.dart';
+import '../../data/models/transaction_filter_definition.dart';
 import '../../data/models/transaction_timeline.dart';
 import '../widgets/sensitive_text.dart';
 import '../widgets/sticky_header_delegate.dart';
+
+typedef _FilterComposerLauncher = Future<void> Function({TransactionFilterDefinition? definition});
 
 class TransactionsPage extends StatefulWidget {
   const TransactionsPage({
@@ -169,6 +172,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
                             ),
                             const SizedBox(height: 12),
                             _TagFilterWrap(controller: widget.transactionsController),
+                            const SizedBox(height: 16),
+                            _SavedFiltersPanel(
+                              controller: widget.transactionsController,
+                              onCompose: _openFilterComposer,
+                            ),
                           ],
                         ),
                       ),
@@ -800,9 +808,27 @@ class _TransactionTile extends StatelessWidget {
                       textAlign: TextAlign.right,
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      transaction.merchant,
-                      style: theme.textTheme.labelSmall,
+                    Tooltip(
+                      message: t.translate('viewMerchantProfile'),
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.of(context).pushNamed(
+                            AppRouter.merchantProfile,
+                            arguments: transaction.merchant,
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          child: Text(
+                            transaction.merchant,
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              color: theme.colorScheme.primary,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -823,6 +849,27 @@ class _TransactionTile extends StatelessWidget {
                 ),
               ],
             ),
+            if ((transaction.note ?? '').isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                t.translate('noteLabel'),
+                style: theme.textTheme.labelMedium,
+              ),
+              const SizedBox(height: 6),
+              _NoteBubble(note: transaction.note!),
+            ],
+            if (transaction.attachmentUrl != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                t.translate('attachmentLabel'),
+                style: theme.textTheme.labelMedium,
+              ),
+              const SizedBox(height: 6),
+              _AttachmentPreview(
+                url: transaction.attachmentUrl!,
+                tooltip: t.translate('viewAttachment'),
+              ),
+            ],
           ],
         ),
       ),
@@ -1149,6 +1196,724 @@ class _EmptyTimeline extends StatelessWidget {
           style: theme.textTheme.titleMedium,
         ),
       ],
+    );
+  }
+}
+
+
+class _SavedFiltersPanel extends StatelessWidget {
+  const _SavedFiltersPanel({
+    required this.controller,
+    required this.onCompose,
+  });
+
+  final TransactionsController controller;
+  final _FilterComposerLauncher onCompose;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
+
+    return ValueListenableBuilder<TransactionFilterDefinition?>(
+      valueListenable: controller.activeView,
+      builder: (context, active, _) {
+        return ValueListenableBuilder<List<TransactionFilterDefinition>>(
+          valueListenable: controller.savedViews,
+          builder: (context, views, __) {
+            final children = <Widget>[
+              Row(
+                children: [
+                  Text(
+                    t.translate('advancedFiltersTitle'),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  TextButton.icon(
+                    onPressed: () => onCompose(),
+                    icon: const Icon(Icons.tune_rounded),
+                    label: Text(t.translate('editFilters')),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ];
+
+            if (active != null) {
+              final isSaved = views.any((view) => view.id == active.id);
+              children.add(_ActiveFilterBanner(
+                controller: controller,
+                filter: active,
+                isSaved: isSaved,
+                onCompose: onCompose,
+              ));
+              children.add(const SizedBox(height: 12));
+            }
+
+            if (views.isEmpty) {
+              children.add(Text(
+                t.translate('noSavedViews'),
+                style: theme.textTheme.titleSmall,
+              ));
+              children.add(const SizedBox(height: 4));
+              children.add(Text(
+                t.translate('noSavedViewsHint'),
+                style: theme.textTheme.bodySmall,
+              ));
+            } else {
+              children.add(Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final view in views)
+                    _SavedViewCard(
+                      controller: controller,
+                      view: view,
+                      onCompose: onCompose,
+                    ),
+                ],
+              ));
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children,
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _ActiveFilterBanner extends StatelessWidget {
+  const _ActiveFilterBanner({
+    required this.controller,
+    required this.filter,
+    required this.isSaved,
+    required this.onCompose,
+  });
+
+  final TransactionsController controller;
+  final TransactionFilterDefinition filter;
+  final bool isSaved;
+  final _FilterComposerLauncher onCompose;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
+    final summary = _filterSummary(context, filter);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.filter_alt_outlined, color: theme.colorScheme.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  '${t.translate('activeFilterTitle')}: ${filter.name}',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: controller.clearAdvancedFilter,
+                child: Text(t.translate('clearFilter')),
+              ),
+            ],
+          ),
+          if (summary.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              summary,
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
+          Row(
+            children: [
+              if (isSaved)
+                TextButton(
+                  onPressed: () => onCompose(definition: filter),
+                  child: Text(t.translate('editView')),
+                )
+              else
+                TextButton(
+                  onPressed: () => onCompose(definition: filter),
+                  child: Text(t.translate('saveViewAction')),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SavedViewCard extends StatelessWidget {
+  const _SavedViewCard({
+    required this.controller,
+    required this.view,
+    required this.onCompose,
+  });
+
+  final TransactionsController controller;
+  final TransactionFilterDefinition view;
+  final _FilterComposerLauncher onCompose;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    return ValueListenableBuilder<TransactionFilterDefinition?>(
+      valueListenable: controller.activeView,
+      builder: (context, active, _) {
+        final isActive = active?.id == view.id;
+        return Container(
+          decoration: BoxDecoration(
+            color: isActive
+                ? theme.colorScheme.primary.withOpacity(0.16)
+                : theme.colorScheme.surfaceVariant.withOpacity(0.24),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isActive
+                  ? theme.colorScheme.primary.withOpacity(0.45)
+                  : Colors.transparent,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton.icon(
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  await controller.applyAdvancedFilter(
+                    view,
+                    updateBaseFilters: true,
+                  );
+                  messenger.showSnackBar(
+                    SnackBar(content: Text(t.translate('savedViewApplied'))),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                ),
+                icon: const Icon(Icons.filter_alt_rounded, size: 18),
+                label: Text(view.name),
+              ),
+              IconButton(
+                tooltip: t.translate('editView'),
+                icon: const Icon(Icons.edit_rounded, size: 18),
+                onPressed: () => onCompose(definition: view),
+              ),
+              IconButton(
+                tooltip: t.translate('deleteView'),
+                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  await controller.deleteView(view.id);
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        t.translate('savedViewDeleted', params: {'name': view.name}),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+String _filterSummary(BuildContext context, TransactionFilterDefinition filter) {
+  final t = AppLocalizations.of(context);
+  final localizations = MaterialLocalizations.of(context);
+  final parts = <String>[];
+
+  if (filter.minAmount != null) {
+    parts.add('${t.translate('minAmountLabel')}: ${filter.minAmount!.toStringAsFixed(2)}');
+  }
+  if (filter.maxAmount != null) {
+    parts.add('${t.translate('maxAmountLabel')}: ${filter.maxAmount!.toStringAsFixed(2)}');
+  }
+  if (filter.startDate != null || filter.endDate != null) {
+    final start = filter.startDate ?? filter.endDate!;
+    final end = filter.endDate ?? filter.startDate!;
+    final formatted =
+        '${localizations.formatMediumDate(start)} – ${localizations.formatMediumDate(end)}';
+    parts.add('${t.translate('dateRange')}: $formatted');
+  }
+  if (filter.type != null) {
+    parts.add(filter.type == TransactionType.expense
+        ? t.translate('filterTypeExpense')
+        : t.translate('filterTypeIncome'));
+  }
+  if (filter.status != null) {
+    parts.add(t.translate(filter.status!.name));
+  }
+  if (filter.merchant != null) {
+    parts.add('${t.translate('merchantContains')}: ${filter.merchant}');
+  }
+  if (filter.category != null) {
+    parts.add('${t.translate('category')}: ${filter.category}');
+  }
+  if (filter.tags.isNotEmpty) {
+    parts.add('${t.translate('tags')}: ${filter.tags.join(', ')}');
+  }
+
+  return parts.join(' • ');
+}
+
+class _NoteBubble extends StatelessWidget {
+  const _NoteBubble({required this.note});
+
+  final String note;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.28),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        note,
+        style: theme.textTheme.bodyMedium,
+      ),
+    );
+  }
+}
+
+class _AttachmentPreview extends StatelessWidget {
+  const _AttachmentPreview({
+    required this.url,
+    required this.tooltip,
+  });
+
+  final String url;
+  final String tooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: () {
+          showDialog<void>(
+            context: context,
+            builder: (context) {
+              return Dialog(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+        borderRadius: BorderRadius.circular(18),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: Image.network(
+              url,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterComposerSheet extends StatefulWidget {
+  const _FilterComposerSheet({
+    required this.controller,
+    this.initialDefinition,
+  });
+
+  final TransactionsController controller;
+  final TransactionFilterDefinition? initialDefinition;
+
+  @override
+  State<_FilterComposerSheet> createState() => _FilterComposerSheetState();
+}
+
+class _FilterComposerSheetState extends State<_FilterComposerSheet> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _minAmountController;
+  late final TextEditingController _maxAmountController;
+  late final TextEditingController _merchantController;
+  TransactionType? _type;
+  TransactionStatus? _status;
+  DateTimeRange? _dateRange;
+  bool _includeCategory = false;
+  bool _includeTags = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialDefinition ?? widget.controller.activeView.value;
+    _nameController = TextEditingController(text: initial?.name ?? '');
+    _minAmountController = TextEditingController(
+      text: initial?.minAmount != null ? initial!.minAmount!.toStringAsFixed(2) : '',
+    );
+    _maxAmountController = TextEditingController(
+      text: initial?.maxAmount != null ? initial!.maxAmount!.toStringAsFixed(2) : '',
+    );
+    _merchantController = TextEditingController(text: initial?.merchant ?? '');
+    _type = initial?.type;
+    _status = initial?.status;
+    if (initial?.startDate != null || initial?.endDate != null) {
+      _dateRange = DateTimeRange(
+        start: initial?.startDate ?? initial!.endDate!,
+        end: initial?.endDate ?? initial!.startDate!,
+      );
+    }
+    _includeCategory = initial?.category != null;
+    _includeTags = initial?.tags.isNotEmpty ?? false;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _minAmountController.dispose();
+    _maxAmountController.dispose();
+    _merchantController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickDateRange() async {
+    final now = DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(now.year - 5),
+      lastDate: DateTime(now.year + 5),
+      initialDateRange: _dateRange ?? DateTimeRange(start: now.subtract(const Duration(days: 30)), end: now),
+    );
+    if (picked != null) {
+      setState(() => _dateRange = picked);
+    }
+  }
+
+  Future<void> _apply({required bool save}) async {
+    final t = AppLocalizations.of(context);
+    final name = _nameController.text.trim();
+    final min = double.tryParse(_minAmountController.text.trim());
+    final max = double.tryParse(_maxAmountController.text.trim());
+
+    if (min != null && max != null && min > max) {
+      setState(() => _error = t.translate('invalidRangeError'));
+      return;
+    }
+    if (save && name.isEmpty) {
+      setState(() => _error = t.translate('missingNameError'));
+      return;
+    }
+
+    setState(() => _error = null);
+
+    final id = save
+        ? widget.initialDefinition?.id ?? 'view_${DateTime.now().millisecondsSinceEpoch}'
+        : widget.initialDefinition?.id ?? 'temp_${DateTime.now().millisecondsSinceEpoch}';
+    final effectiveName = name.isEmpty
+        ? t.translate('quickFilterDraft')
+        : name;
+
+    final definition = TransactionFilterDefinition(
+      id: id,
+      name: effectiveName,
+      category: _includeCategory ? widget.controller.categoryFilter.value : null,
+      tags: _includeTags ? widget.controller.tagFilters.value.toList() : const [],
+      minAmount: min,
+      maxAmount: max,
+      startDate: _dateRange?.start,
+      endDate: _dateRange?.end,
+      type: _type,
+      status: _status,
+      merchant: _merchantController.text.trim().isEmpty
+          ? null
+          : _merchantController.text.trim(),
+    );
+
+    if (save) {
+      await widget.controller.saveView(definition);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            t.translate('savedViewCreated', params: {'name': definition.name}),
+          ),
+        ),
+      );
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t.translate('savedViewApplied'))),
+      );
+    }
+
+    await widget.controller.applyAdvancedFilter(
+      definition,
+      updateBaseFilters: _includeCategory || _includeTags,
+    );
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = AppLocalizations.of(context);
+    final media = MediaQuery.of(context);
+    final hasCategory = widget.controller.categoryFilter.value != null;
+    final hasTags = widget.controller.tagFilters.value.isNotEmpty;
+
+    final rangeLabel = _dateRange == null
+        ? t.translate('selectDates')
+        : '${MaterialLocalizations.of(context).formatMediumDate(_dateRange!.start)} – ${MaterialLocalizations.of(context).formatMediumDate(_dateRange!.end)}';
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 24,
+        bottom: media.viewInsets.bottom + 24,
+      ),
+      child: Material(
+        borderRadius: BorderRadius.circular(28),
+        color: theme.colorScheme.surface,
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 56,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceVariant.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  t.translate('editFilters'),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    labelText: t.translate('saveViewAction'),
+                    hintText: t.translate('quickFilterDraft'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _minAmountController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: t.translate('minAmountLabel'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _maxAmountController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: t.translate('maxAmountLabel'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _pickDateRange,
+                  icon: const Icon(Icons.calendar_month_rounded),
+                  label: Text(rangeLabel),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  t.translate('transactionTypeLabel'),
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: Text(t.translate('typeAny')),
+                      selected: _type == null,
+                      onSelected: (_) => setState(() => _type = null),
+                    ),
+                    ChoiceChip(
+                      label: Text(t.translate('filterTypeIncome')),
+                      selected: _type == TransactionType.income,
+                      onSelected: (_) => setState(() => _type = TransactionType.income),
+                    ),
+                    ChoiceChip(
+                      label: Text(t.translate('filterTypeExpense')),
+                      selected: _type == TransactionType.expense,
+                      onSelected: (_) => setState(() => _type = TransactionType.expense),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  t.translate('transactionStatusLabel'),
+                  style: theme.textTheme.titleSmall,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: Text(t.translate('statusAny')),
+                      selected: _status == null,
+                      onSelected: (_) => setState(() => _status = null),
+                    ),
+                    ChoiceChip(
+                      label: Text(t.translate('completed')),
+                      selected: _status == TransactionStatus.completed,
+                      onSelected: (_) =>
+                          setState(() => _status = TransactionStatus.completed),
+                    ),
+                    ChoiceChip(
+                      label: Text(t.translate('pending')),
+                      selected: _status == TransactionStatus.pending,
+                      onSelected: (_) =>
+                          setState(() => _status = TransactionStatus.pending),
+                    ),
+                    ChoiceChip(
+                      label: Text(t.translate('scheduled')),
+                      selected: _status == TransactionStatus.scheduled,
+                      onSelected: (_) =>
+                          setState(() => _status = TransactionStatus.scheduled),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _merchantController,
+                  decoration: InputDecoration(
+                    labelText: t.translate('merchantContains'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                CheckboxListTile(
+                  value: _includeCategory && hasCategory,
+                  onChanged: hasCategory
+                      ? (value) => setState(() => _includeCategory = value ?? false)
+                      : null,
+                  title: Text(t.translate('includeCurrentCategory')),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                CheckboxListTile(
+                  value: _includeTags && hasTags,
+                  onChanged: hasTags
+                      ? (value) => setState(() => _includeTags = value ?? false)
+                      : null,
+                  title: Text(t.translate('includeCurrentTags')),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _error!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => _apply(save: false),
+                        child: Text(t.translate('applyFilters')),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => _apply(save: true),
+                        child: Text(t.translate('saveViewAction')),
+                      ),
+                    ),
+                  ],
+                ),
+                if (widget.initialDefinition != null) ...[
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: () async {
+                      await widget.controller.deleteView(widget.initialDefinition!.id);
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            t.translate(
+                              'savedViewDeleted',
+                              params: {'name': widget.initialDefinition!.name},
+                            ),
+                          ),
+                        ),
+                      );
+                      Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    label: Text(t.translate('deleteView')),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

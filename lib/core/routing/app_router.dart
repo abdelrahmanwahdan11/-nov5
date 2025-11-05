@@ -14,6 +14,10 @@ class AppRouter {
   static const statement = '/home/statement';
   static const calculators = '/home/calculators';
   static const guides = '/home/guides';
+  static const merchantProfile = '/home/merchant';
+  static const notifications = '/home/notifications';
+  static const help = '/home/help';
+  static const rate = '/home/rate';
 
   static String routeForEntry(AppEntryState state) {
     switch (state) {

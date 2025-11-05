@@ -30,6 +30,15 @@ class AppConstants {
   static const String prefStatementMonth = 'statement_month';
   static const String prefFeeCalculator = 'fee_calculator_state';
   static const String prefInterestCalculator = 'interest_calculator_state';
+  static const String prefSavedTransactionViews = 'saved_transaction_views';
+  static const String prefNotifications = 'app_notifications';
+  static const String prefHelpCenterHistory = 'help_center_history';
+  static const String prefNavShortcuts = 'nav_quick_actions';
+  static const String prefAppRating = 'app_rating_value';
+  static const String prefAppFeedback = 'app_feedback_text';
+  static const String prefLastSeenVersion = 'last_seen_version';
+
+  static const String currentVersion = '1.4.0';
 
   static const List<Color> primarySwatches = [
     Color(0xFF2BAA7D),

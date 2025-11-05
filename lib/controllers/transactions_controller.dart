@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/utils/app_constants.dart';
 import '../data/models/transaction.dart';
+import '../data/models/transaction_filter_definition.dart';
 import '../data/models/transaction_timeline.dart';
 import '../data/mock/mock_data.dart';
 
@@ -18,6 +19,9 @@ class TransactionsController {
     this.tagFilters,
     this.selectedTransactions,
     this.undoHistory,
+    this.savedViews,
+    this.activeView,
+    this._prefs,
   ) : _locale = const Locale('en');
 
   final List<TransactionModel> _allTransactions;
@@ -27,7 +31,13 @@ class TransactionsController {
   final ValueNotifier<Set<String>> tagFilters;
   final ValueNotifier<Set<String>> selectedTransactions;
   final ValueNotifier<List<TransactionsUndoEntry>> undoHistory;
+  final ValueNotifier<List<TransactionFilterDefinition>> savedViews;
+  final ValueNotifier<TransactionFilterDefinition?> activeView;
+  final SharedPreferences _prefs;
   Locale _locale;
+
+  TransactionFilterDefinition? _activeAdvancedFilter;
+  bool _suppressActiveClear = false;
 
   final StreamController<TransactionModel> _recentlyArchived =
       StreamController.broadcast();
@@ -137,11 +147,11 @@ class TransactionsController {
 
   Future<void> selectCategory(String? category) async {
     categoryFilter.value = category;
-    final prefs = await SharedPreferences.getInstance();
+    _maybeClearActiveFilter();
     if (category == null) {
-      await prefs.remove(AppConstants.prefLastCategoryFilter);
+      await _prefs.remove(AppConstants.prefLastCategoryFilter);
     } else {
-      await prefs.setString(AppConstants.prefLastCategoryFilter, category);
+      await _prefs.setString(AppConstants.prefLastCategoryFilter, category);
     }
     await _refreshTimeline(resetPage: true);
   }
@@ -154,14 +164,80 @@ class TransactionsController {
       tags.add(tag);
     }
     tagFilters.value = tags;
+    _maybeClearActiveFilter();
     await _persistTags(tags);
     await _refreshTimeline(resetPage: true);
   }
 
   Future<void> clearTags() async {
     tagFilters.value = <String>{};
+    _maybeClearActiveFilter();
     await _persistTags(tagFilters.value);
     await _refreshTimeline(resetPage: true);
+  }
+
+  Future<void> applyAdvancedFilter(
+    TransactionFilterDefinition? definition, {
+    bool updateBaseFilters = false,
+  }) async {
+    if (definition == null) {
+      _activeAdvancedFilter = null;
+      activeView.value = null;
+      await _refreshTimeline(resetPage: true);
+      return;
+    }
+
+    if (updateBaseFilters) {
+      _suppressActiveClear = true;
+      try {
+        categoryFilter.value = definition.category;
+        if (definition.category == null) {
+          await _prefs.remove(AppConstants.prefLastCategoryFilter);
+        } else {
+          await _prefs.setString(
+            AppConstants.prefLastCategoryFilter,
+            definition.category!,
+          );
+        }
+        final tags = definition.tags.toSet();
+        tagFilters.value = tags;
+        await _persistTags(tags);
+      } finally {
+        _suppressActiveClear = false;
+      }
+    }
+
+    _activeAdvancedFilter = definition;
+    activeView.value = definition;
+    await _refreshTimeline(resetPage: true);
+  }
+
+  Future<void> saveView(TransactionFilterDefinition definition) async {
+    final views = [...savedViews.value];
+    final index = views.indexWhere((item) => item.id == definition.id);
+    if (index >= 0) {
+      views[index] = definition;
+    } else {
+      views.add(definition);
+    }
+    views.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    savedViews.value =
+        List<TransactionFilterDefinition>.unmodifiable(views);
+    await _persistSavedViews();
+  }
+
+  Future<void> deleteView(String id) async {
+    final views = [...savedViews.value]..removeWhere((view) => view.id == id);
+    savedViews.value =
+        List<TransactionFilterDefinition>.unmodifiable(views);
+    await _persistSavedViews();
+    if (_activeAdvancedFilter != null && _activeAdvancedFilter!.id == id) {
+      await applyAdvancedFilter(null);
+    }
+  }
+
+  Future<void> clearAdvancedFilter() async {
+    await applyAdvancedFilter(null);
   }
 
   Future<void> loadMore() async {
@@ -196,7 +272,8 @@ class TransactionsController {
       final matchesTags = tags.isEmpty
           ? true
           : tags.every((tag) => tx.tags.contains(tag));
-      return matchesQuery && matchesCategory && matchesTags;
+      final matchesAdvanced = _matchesAdvancedFilter(tx);
+      return matchesQuery && matchesCategory && matchesTags && matchesAdvanced;
     }).toList();
 
     final endIndex = ((_currentPage + 1) * _pageSize);
@@ -380,11 +457,18 @@ class TransactionsController {
     undoHistory.value = List<TransactionsUndoEntry>.unmodifiable(_undoStack);
   }
 
+  void _maybeClearActiveFilter() {
+    if (_suppressActiveClear || _activeAdvancedFilter == null) {
+      return;
+    }
+    _activeAdvancedFilter = null;
+    activeView.value = null;
+  }
+
   Future<void> _persistTags(Set<String> tags) async {
-    final prefs = await SharedPreferences.getInstance();
     final encoded =
         tags.map((tag) => base64Encode(utf8.encode(tag))).toList(growable: false);
-    await prefs.setStringList(AppConstants.prefLastTagFilters, encoded);
+    await _prefs.setStringList(AppConstants.prefLastTagFilters, encoded);
   }
 
   String _formatDateLabel(DateTime date) {

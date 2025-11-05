@@ -2,18 +2,24 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/services.dart';
 
 import '../../controllers/analytics_controller.dart';
 import '../../controllers/display_controller.dart';
+import '../../controllers/engagement_controller.dart';
+import '../../controllers/help_center_controller.dart';
 import '../../controllers/locale_controller.dart';
+import '../../controllers/notifications_controller.dart';
 import '../../controllers/profile_controller.dart';
 import '../../controllers/session_controller.dart';
+import '../../controllers/shortcuts_controller.dart';
 import '../../controllers/theme_controller.dart';
 import '../../controllers/tools_controller.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/routing/app_router.dart';
 import '../../core/utils/app_constants.dart';
 import '../../core/utils/app_scope.dart';
+import '../../data/models/app_notification.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({
@@ -24,6 +30,10 @@ class SettingsPage extends StatelessWidget {
     required this.profileController,
     required this.toolsController,
     required this.analyticsController,
+    required this.notificationsController,
+    required this.helpCenterController,
+    required this.shortcutsController,
+    required this.engagementController,
   });
 
   final ThemeController themeController;
@@ -32,6 +42,10 @@ class SettingsPage extends StatelessWidget {
   final ProfileController profileController;
   final ToolsController toolsController;
   final AnalyticsController analyticsController;
+  final NotificationsController notificationsController;
+  final HelpCenterController helpCenterController;
+  final ShortcutsController shortcutsController;
+  final EngagementController engagementController;
 
   @override
   Widget build(BuildContext context) {
@@ -99,10 +113,29 @@ class SettingsPage extends StatelessWidget {
                   reduceMotion: reduceMotion,
                 ),
                 const SizedBox(height: 24),
+                _NotificationsSection(
+                  t: t,
+                  controller: notificationsController,
+                  reduceMotion: reduceMotion,
+                ),
+                const SizedBox(height: 24),
+                _QuickActionsSection(
+                  t: t,
+                  shortcutsController: shortcutsController,
+                  reduceMotion: reduceMotion,
+                ),
+                const SizedBox(height: 24),
                 _ResourcesSection(
                   t: t,
                   toolsController: toolsController,
                   analyticsController: analyticsController,
+                  reduceMotion: reduceMotion,
+                ),
+                const SizedBox(height: 24),
+                _SupportSection(
+                  t: t,
+                  helpCenterController: helpCenterController,
+                  engagementController: engagementController,
                   reduceMotion: reduceMotion,
                 ),
               ],
@@ -490,6 +523,331 @@ class _ExperienceSection extends StatelessWidget {
         return card;
       },
     );
+  }
+}
+
+class _NotificationsSection extends StatelessWidget {
+  const _NotificationsSection({
+    required this.t,
+    required this.controller,
+    required this.reduceMotion,
+  });
+
+  final AppLocalizations t;
+  final NotificationsController controller;
+  final bool reduceMotion;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ValueListenableBuilder<List<AppNotificationModel>>(
+      valueListenable: controller.notifications,
+      builder: (context, notifications, _) {
+        final unread = notifications.where((item) => !item.read).length;
+        Widget card = Card(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.notifications_active_rounded),
+                title: Text(t.translate('settingsNotificationsCenter')),
+                subtitle: Text(
+                  t.translate('settingsNotificationsSubtitle',
+                      params: {'count': unread.toString()}),
+                ),
+                trailing: const Icon(Icons.arrow_forward_ios_rounded),
+                onTap: () =>
+                    Navigator.of(context).pushNamed(AppRouter.notifications),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.done_all_rounded),
+                title: Text(t.translate('notificationsMarkAll')),
+                subtitle: Text(t.translate('notificationsMarkAllSubtitle')),
+                onTap: unread == 0 ? null : controller.markAllRead,
+              ),
+            ],
+          ),
+        );
+
+        if (!reduceMotion) {
+          card = card
+              .animate()
+              .fadeIn(duration: 320.ms)
+              .slideY(begin: 0.1, end: 0);
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              t.translate('settingsNotificationsTitle'),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            card,
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _QuickActionsSection extends StatelessWidget {
+  const _QuickActionsSection({
+    required this.t,
+    required this.shortcutsController,
+    required this.reduceMotion,
+  });
+
+  final AppLocalizations t;
+  final ShortcutsController shortcutsController;
+  final bool reduceMotion;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final definitions = ShortcutsController.definitions();
+    final suggestions = ShortcutsController.defaultSuggestions();
+
+    return ValueListenableBuilder<Map<String, List<String>>>(
+      valueListenable: shortcutsController.enabledListenable,
+      builder: (context, mapping, _) {
+        Widget card = Card(
+          child: Column(
+            children: [
+              for (final tab in ShortcutsController.tabs)
+                _QuickActionTile(
+                  tabId: tab,
+                  mapping: mapping,
+                  definitions: definitions,
+                  suggestions: suggestions[tab] ?? const <String>[],
+                  shortcutsController: shortcutsController,
+                  t: t,
+                ),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: TextButton.icon(
+                    onPressed: shortcutsController.resetDefaults,
+                    icon: const Icon(Icons.restart_alt_rounded),
+                    label: Text(t.translate('settingsQuickActionsReset')),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+
+        if (!reduceMotion) {
+          card = card
+              .animate()
+              .fadeIn(duration: 320.ms)
+              .slideY(begin: 0.08, end: 0);
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              t.translate('settingsQuickActionsTitle'),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            card,
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _QuickActionTile extends StatelessWidget {
+  const _QuickActionTile({
+    required this.tabId,
+    required this.mapping,
+    required this.definitions,
+    required this.suggestions,
+    required this.shortcutsController,
+    required this.t,
+  });
+
+  final String tabId;
+  final Map<String, List<String>> mapping;
+  final Map<String, NavShortcutDefinition> definitions;
+  final List<String> suggestions;
+  final ShortcutsController shortcutsController;
+  final AppLocalizations t;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = mapping[tabId] ?? const <String>[];
+    return ExpansionTile(
+      title: Text(t.translate('settingsQuickTab_$tabId')),
+      children: [
+        for (final actionId in suggestions)
+          CheckboxListTile(
+            value: enabled.contains(actionId),
+            onChanged: (value) => shortcutsController.toggleShortcut(
+              tabId,
+              actionId,
+              value ?? false,
+            ),
+            title: Text(t.translate(definitions[actionId]!.labelKey)),
+          ),
+      ],
+    );
+  }
+}
+
+class _SupportSection extends StatelessWidget {
+  const _SupportSection({
+    required this.t,
+    required this.helpCenterController,
+    required this.engagementController,
+    required this.reduceMotion,
+  });
+
+  final AppLocalizations t;
+  final HelpCenterController helpCenterController;
+  final EngagementController engagementController;
+  final bool reduceMotion;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    Widget card = Card(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.help_center_rounded),
+            title: Text(t.translate('settingsHelpCenter')),
+            subtitle: Text(
+              t.translate('settingsHelpCenterSubtitle',
+                  params: {'count': helpCenterController.allArticles.length.toString()}),
+            ),
+            onTap: () => Navigator.of(context).pushNamed(AppRouter.help),
+          ),
+          const Divider(height: 1),
+          ValueListenableBuilder<int>(
+            valueListenable: engagementController.ratingNotifier,
+            builder: (context, rating, _) {
+              return ListTile(
+                leading: const Icon(Icons.star_rate_rounded),
+                title: Text(t.translate('settingsRateApp')),
+                subtitle: Text(
+                  rating == 0
+                      ? t.translate('settingsRatePrompt')
+                      : t.translate('settingsRateThanks',
+                          params: {'score': rating.toString()}),
+                ),
+                onTap: () => Navigator.of(context).pushNamed(AppRouter.rate),
+              );
+            },
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.mail_outline_rounded),
+            title: Text(t.translate('settingsContactSupport')),
+            subtitle: Text(t.translate('settingsContactSupportSubtitle')),
+            onTap: () => _showContactSheet(context),
+          ),
+        ],
+      ),
+    );
+
+    if (!reduceMotion) {
+      card = card
+          .animate()
+          .fadeIn(duration: 320.ms)
+          .slideY(begin: 0.1, end: 0);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          t.translate('settingsSupportTitle'),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 12),
+        card,
+      ],
+    );
+  }
+
+  Future<void> _showContactSheet(BuildContext context) async {
+    const email = 'support@mawaid.app';
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.translate('contactSupportTitle'),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  t.translate('contactSupportBody'),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.copy_rounded),
+                  title: Text(t.translate('contactCopyEmail')),
+                  subtitle: const Text(email),
+                  onTap: () => Navigator.pop(context, 'copy'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.outgoing_mail_rounded),
+                  title: Text(t.translate('contactDraftMail')),
+                  subtitle: Text(t.translate('contactDraftHint')),
+                  onTap: () => Navigator.pop(context, 'draft'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (action == null) {
+      return;
+    }
+
+    switch (action) {
+      case 'copy':
+        await Clipboard.setData(const ClipboardData(text: email));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(t.translate('contactEmailCopied'))),
+        );
+        break;
+      case 'draft':
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(t.translate('contactDraftSaved'))),
+        );
+        break;
+    }
   }
 }
 

@@ -17,6 +17,8 @@ class TransactionModel {
     required this.type,
     required this.status,
     required this.merchant,
+    this.note,
+    this.attachmentUrl,
   });
 
   final String id;
@@ -30,6 +32,8 @@ class TransactionModel {
   final TransactionType type;
   final TransactionStatus status;
   final String merchant;
+  final String? note;
+  final String? attachmentUrl;
 
   TransactionModel copyWith({
     String? title,
@@ -42,6 +46,8 @@ class TransactionModel {
     TransactionType? type,
     TransactionStatus? status,
     String? merchant,
+    String? note,
+    String? attachmentUrl,
   }) {
     return TransactionModel(
       id: id,
@@ -55,6 +61,8 @@ class TransactionModel {
       type: type ?? this.type,
       status: status ?? this.status,
       merchant: merchant ?? this.merchant,
+      note: note ?? this.note,
+      attachmentUrl: attachmentUrl ?? this.attachmentUrl,
     );
   }
 
@@ -71,6 +79,8 @@ class TransactionModel {
       'type': type.name,
       'status': status.name,
       'merchant': merchant,
+      'note': note,
+      'attachmentUrl': attachmentUrl,
     };
   }
 
@@ -89,6 +99,8 @@ class TransactionModel {
       status: TransactionStatus.values
           .firstWhere((e) => e.name == map['status'] as String),
       merchant: map['merchant'] as String,
+      note: map['note'] as String?,
+      attachmentUrl: map['attachmentUrl'] as String?,
     );
   }
 

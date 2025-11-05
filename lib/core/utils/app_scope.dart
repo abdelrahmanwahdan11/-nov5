@@ -3,8 +3,11 @@ import 'package:flutter/widgets.dart';
 import '../../controllers/analytics_controller.dart';
 import '../../controllers/budgets_controller.dart';
 import '../../controllers/display_controller.dart';
+import '../../controllers/engagement_controller.dart';
 import '../../controllers/goals_controller.dart';
+import '../../controllers/help_center_controller.dart';
 import '../../controllers/locale_controller.dart';
+import '../../controllers/notifications_controller.dart';
 import '../../controllers/profile_controller.dart';
 import '../../controllers/recipients_controller.dart';
 import '../../controllers/recurring_payments_controller.dart';
@@ -14,6 +17,7 @@ import '../../controllers/theme_controller.dart';
 import '../../controllers/tools_controller.dart';
 import '../../controllers/transactions_controller.dart';
 import '../../controllers/wallet_controller.dart';
+import '../../controllers/shortcuts_controller.dart';
 
 class AppScope extends InheritedWidget {
   const AppScope({
@@ -32,6 +36,10 @@ class AppScope extends InheritedWidget {
     required this.recurringPaymentsController,
     required this.analyticsController,
     required this.toolsController,
+    required this.notificationsController,
+    required this.helpCenterController,
+    required this.shortcutsController,
+    required this.engagementController,
     required super.child,
   });
 
@@ -49,6 +57,10 @@ class AppScope extends InheritedWidget {
   final RecurringPaymentsController recurringPaymentsController;
   final AnalyticsController analyticsController;
   final ToolsController toolsController;
+  final NotificationsController notificationsController;
+  final HelpCenterController helpCenterController;
+  final ShortcutsController shortcutsController;
+  final EngagementController engagementController;
 
   static AppScope of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppScope>();
@@ -75,6 +87,10 @@ class AppScope extends InheritedWidget {
         oldWidget.recipientsController != recipientsController ||
         oldWidget.recurringPaymentsController != recurringPaymentsController ||
         oldWidget.analyticsController != analyticsController ||
-        oldWidget.toolsController != toolsController;
+        oldWidget.toolsController != toolsController ||
+        oldWidget.notificationsController != notificationsController ||
+        oldWidget.helpCenterController != helpCenterController ||
+        oldWidget.shortcutsController != shortcutsController ||
+        oldWidget.engagementController != engagementController;
   }
 }

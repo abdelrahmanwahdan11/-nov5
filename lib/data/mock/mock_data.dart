@@ -1,6 +1,10 @@
 import 'dart:math';
 
+import 'package:flutter/material.dart';
+
 import '../models/budget.dart';
+import '../models/app_notification.dart';
+import '../models/help_article.dart';
 import '../models/recipient.dart';
 import '../models/recurring_payment.dart';
 import '../models/savings_goal.dart';
@@ -43,6 +47,19 @@ class MockDataGenerator {
       'fun',
     ];
 
+    final sampleNotes = [
+      'Reviewed monthly subscription to keep under control.',
+      'Split expense with Sara, awaiting her transfer.',
+      'Part of the new photography side-hustle budget.',
+      'Family weekend treat — keep an eye on dining.',
+    ];
+
+    final attachmentPool = [
+      'https://images.unsplash.com/photo-1586201375761-83865001e31b?auto=format&fit=crop&w=800&q=60',
+      'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=60',
+      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=60',
+    ];
+
     return List.generate(count, (index) {
       final category = categories[_random.nextInt(categories.length)];
       final merchant = merchants[_random.nextInt(merchants.length)];
@@ -57,8 +74,15 @@ class MockDataGenerator {
         return tagPool[_random.nextInt(tagPool.length)];
       }).toSet().toList();
 
+      final note = _random.nextBool()
+          ? sampleNotes[_random.nextInt(sampleNotes.length)]
+          : null;
+      final attachment = note == null || !_random.nextBool()
+          ? null
+          : attachmentPool[_random.nextInt(attachmentPool.length)];
+
       return TransactionModel(
-        id: 'tx_$index',
+        id: 'tx_' + index.toString(),
         title: '$category purchase',
         description: '$merchant • ${category.toLowerCase()}',
         amount: amount.toDouble(),
@@ -69,6 +93,8 @@ class MockDataGenerator {
         type: type,
         status: status,
         merchant: merchant,
+        note: note,
+        attachmentUrl: attachment,
       );
     });
   }
@@ -177,6 +203,125 @@ class MockDataGenerator {
         imageUrl:
             'https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?auto=format&fit=crop&w=800&q=60',
         dueDate: DateTime(now.year, now.month + 2, 20),
+      ),
+    ];
+  }
+
+  static List<AppNotificationModel> generateNotifications() {
+    return [
+      AppNotificationModel(
+        id: 'notif_statement_ready',
+        title: 'Statement ready',
+        body: 'Your monthly statement is generated. Tap to preview and share.',
+        type: AppNotificationType.success,
+        timestamp: DateTime.now().subtract(const Duration(hours: 3)),
+        icon: Icons.file_present_rounded,
+        actionRoute: '/home/statement',
+      ),
+      AppNotificationModel(
+        id: 'notif_budget_warning',
+        title: 'Groceries budget near limit',
+        body: 'You have used 86% of your groceries budget this month.',
+        type: AppNotificationType.alert,
+        timestamp: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
+        icon: Icons.warning_rounded,
+        actionRoute: '/home/budgets',
+      ),
+      AppNotificationModel(
+        id: 'notif_new_feature',
+        title: 'Try the new calculators',
+        body: 'Estimate fees and compounding instantly in the calculators lab.',
+        type: AppNotificationType.update,
+        timestamp: DateTime.now().subtract(const Duration(days: 2, hours: 5)),
+        icon: Icons.science_rounded,
+        actionRoute: '/home/calculators',
+      ),
+      AppNotificationModel(
+        id: 'notif_goal_milestone',
+        title: 'Island Getaway is 50% funded',
+        body: 'Amazing! Keep the momentum—schedule an automatic top up.',
+        type: AppNotificationType.success,
+        timestamp: DateTime.now().subtract(const Duration(days: 4)),
+        icon: Icons.emoji_events_rounded,
+        actionRoute: '/home',
+      ),
+      AppNotificationModel(
+        id: 'notif_tip_shortcuts',
+        title: 'Pro tip: customize quick actions',
+        body:
+            'Long-press any tab to launch shortcuts. Tune them in Settings › Labs.',
+        type: AppNotificationType.tip,
+        timestamp: DateTime.now().subtract(const Duration(days: 5, hours: 6)),
+        icon: Icons.tips_and_updates_rounded,
+        actionRoute: '/home/settings',
+      ),
+    ];
+  }
+
+  static List<HelpArticleModel> knowledgeBase() {
+    return [
+      const HelpArticleModel(
+        id: 'help_getting_started',
+        title: 'Getting started with Mawaid',
+        body:
+            'Learn how to personalize your dashboard, add wallets, and explore budgets in minutes.',
+        category: 'Basics',
+        tags: ['onboarding', 'profile', 'home'],
+        relatedIds: ['help_customize_theme', 'help_manage_wallets'],
+      ),
+      const HelpArticleModel(
+        id: 'help_customize_theme',
+        title: 'Customize theme and motion',
+        body:
+            'Adjust colors, card styles, and motion from Settings › Display to match your vibe.',
+        category: 'Personalization',
+        tags: ['theme', 'display', 'accessibility'],
+        relatedIds: ['help_reduce_motion', 'help_privacy_mode'],
+      ),
+      const HelpArticleModel(
+        id: 'help_manage_wallets',
+        title: 'Manage your wallets',
+        body:
+            'Create multiple wallets, reorder them, and flip cards for details from the Wallets hub.',
+        category: 'Wallets',
+        tags: ['wallets', 'cards', 'carousel'],
+        relatedIds: ['help_privacy_mode'],
+      ),
+      const HelpArticleModel(
+        id: 'help_reduce_motion',
+        title: 'Reduce motion and enable focus mode',
+        body:
+            'Prefer a calmer interface? Enable reduced motion, privacy mode, and subtle surfaces.',
+        category: 'Accessibility',
+        tags: ['a11y', 'display', 'privacy'],
+        relatedIds: ['help_privacy_mode'],
+      ),
+      const HelpArticleModel(
+        id: 'help_privacy_mode',
+        title: 'Hide sensitive amounts',
+        body:
+            'Use the privacy toggle in the header or Settings › Privacy to obscure balances instantly.',
+        category: 'Security',
+        tags: ['privacy', 'security'],
+        relatedIds: ['help_customize_theme'],
+      ),
+      const HelpArticleModel(
+        id: 'help_advanced_filters',
+        title: 'Build advanced transaction filters',
+        body:
+            'Create nested filters by amount, tags, merchants, and save them as live views.',
+        category: 'Transactions',
+        tags: ['filters', 'transactions', 'views'],
+        relatedIds: ['help_saved_views', 'help_manage_wallets'],
+      ),
+      const HelpArticleModel(
+        id: 'help_saved_views',
+        title: 'Create smart lists',
+        body:
+            'Pin your favourite filter combinations as Smart Views for quick recall in Transactions.',
+        category: 'Transactions',
+        tags: ['views', 'filters'],
+        relatedIds: ['help_advanced_filters'],
       ),
     ];
   }
