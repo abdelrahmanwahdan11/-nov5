@@ -162,6 +162,7 @@ class _MawaidAppState extends State<MawaidApp> {
           (_) => WalletsPage(
             walletController: widget.walletController,
             profileController: widget.profileController,
+            privacyListenable: widget.sessionController.privacyModeNotifier,
           ),
         );
       case AppRouter.home:
@@ -292,6 +293,7 @@ class _HomeShellState extends State<HomeShell> {
       BudgetsPage(
         key: const PageStorageKey('budgets-page'),
         budgetsController: widget.budgetsController,
+        privacyListenable: widget.sessionController.privacyModeNotifier,
       ),
       GuidesPage(
         key: const PageStorageKey('guides-page'),
@@ -301,6 +303,7 @@ class _HomeShellState extends State<HomeShell> {
         key: const PageStorageKey('transactions-page'),
         transactionsController: widget.transactionsController,
         searchController: widget.searchController,
+        privacyListenable: widget.sessionController.privacyModeNotifier,
       ),
       SettingsPage(
         key: const PageStorageKey('settings-page'),

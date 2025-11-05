@@ -3,11 +3,17 @@ import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../core/localization/app_localizations.dart';
 import '../../data/models/budget.dart';
+import 'sensitive_text.dart';
 
 class BudgetCard extends StatelessWidget {
-  const BudgetCard({super.key, required this.budget});
+  const BudgetCard({
+    super.key,
+    required this.budget,
+    required this.privacyListenable,
+  });
 
   final BudgetModel budget;
+  final ValueListenable<bool> privacyListenable;
 
   @override
   Widget build(BuildContext context) {
@@ -60,8 +66,18 @@ class BudgetCard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            '${t.translate('spent')} ${budget.spent.toStringAsFixed(0)} / ${budget.limit.toStringAsFixed(0)}',
+            t.translate('spent'),
             style: theme.textTheme.labelMedium,
+          ),
+          const SizedBox(height: 4),
+          SensitiveText(
+            privacyListenable: privacyListenable,
+            visibleText:
+                '${budget.spent.toStringAsFixed(0)} / ${budget.limit.toStringAsFixed(0)}',
+            hiddenText: '•••• / ••••',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 12),
           ClipRRect(
@@ -74,8 +90,9 @@ class BudgetCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            budget.remaining >= 0
+          SensitiveText(
+            privacyListenable: privacyListenable,
+            visibleText: budget.remaining >= 0
                 ? '${t.translate('remaining')} ${budget.remaining.toStringAsFixed(0)}'
                 : t.translate('overBudget'),
             style: theme.textTheme.bodySmall?.copyWith(

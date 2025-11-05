@@ -6,6 +6,7 @@ import '../../controllers/wallet_controller.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../core/utils/app_constants.dart';
 import '../../data/models/wallet_card.dart';
+import '../widgets/sensitive_text.dart';
 import '../widgets/wallet_card_composer.dart';
 
 class WalletsPage extends StatefulWidget {
@@ -13,10 +14,12 @@ class WalletsPage extends StatefulWidget {
     super.key,
     required this.walletController,
     required this.profileController,
+    required this.privacyListenable,
   });
 
   final WalletController walletController;
   final ProfileController profileController;
+  final ValueListenable<bool> privacyListenable;
 
   @override
   State<WalletsPage> createState() => _WalletsPageState();
@@ -219,12 +222,15 @@ class _WalletsPageState extends State<WalletsPage> {
                               child: Text(card.currency),
                             ),
                             title: Text(card.title),
-                            subtitle: Text(
-                              t
+                            subtitle: SensitiveText(
+                              privacyListenable: widget.privacyListenable,
+                              visibleText: t
                                   .translate('walletListMeta')
                                   .replaceAll('{balance}', card.balance.toStringAsFixed(2))
                                   .replaceAll('{currency}', card.currency)
                                   .replaceAll('{network}', card.network),
+                              hiddenText: t.translate('privacyHiddenLabel'),
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                             trailing: Wrap(
                               spacing: 4,
@@ -336,8 +342,11 @@ class _WalletStackPreview extends StatelessWidget {
                                 color: Colors.white70,
                               ),
                             ),
-                            Text(
-                              '${preview[i].balance.toStringAsFixed(2)} ${preview[i].currency}',
+                            SensitiveText(
+                              privacyListenable: widget.privacyListenable,
+                              visibleText:
+                                  '${preview[i].balance.toStringAsFixed(2)} ${preview[i].currency}',
+                              hiddenText: '••••',
                               style: theme.textTheme.titleMedium?.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w600,

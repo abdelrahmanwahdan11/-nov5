@@ -14,6 +14,7 @@ class AppConstants {
   static const String prefWalletCards = 'wallet_cards';
   static const String prefWalletActiveIndex = 'wallet_active_index';
   static const String prefWalletFlippedCards = 'wallet_flipped_cards';
+  static const String prefPrivacyMode = 'privacy_mode_enabled';
   static const String prefProfileName = 'profile_name';
   static const String prefProfileTitle = 'profile_title';
   static const String prefProfileBio = 'profile_bio';

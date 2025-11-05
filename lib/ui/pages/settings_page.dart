@@ -367,6 +367,31 @@ class _ExperienceSection extends StatelessWidget {
                   ),
                 const SizedBox(height: 12),
                 ValueListenableBuilder<bool>(
+                  valueListenable: sessionController.privacyModeNotifier,
+                  builder: (context, hidden, __) {
+                    return SwitchListTile.adaptive(
+                      contentPadding: EdgeInsets.zero,
+                      value: hidden,
+                      onChanged: (value) async {
+                        await sessionController.setPrivacyMode(value);
+                        final messenger = ScaffoldMessenger.maybeOf(context);
+                        if (messenger == null) return;
+                        final message = value
+                            ? t.translate('privacyHiddenToast')
+                            : t.translate('privacyVisibleToast');
+                        messenger
+                          ..hideCurrentSnackBar()
+                          ..showSnackBar(
+                            SnackBar(content: Text(message)),
+                          );
+                      },
+                      title: Text(t.translate('privacyMode')),
+                      subtitle: Text(t.translate('privacyModeDescription')),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                ValueListenableBuilder<bool>(
                   valueListenable: sessionController.showCoachNotifier,
                   builder: (context, showCoach, __) {
                     final isEnabled = showCoach || !sessionController.hasSeenCoach;

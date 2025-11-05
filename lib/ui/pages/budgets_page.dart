@@ -8,9 +8,14 @@ import '../../data/models/budget.dart';
 import '../widgets/budget_card.dart';
 
 class BudgetsPage extends StatelessWidget {
-  const BudgetsPage({super.key, required this.budgetsController});
+  const BudgetsPage({
+    super.key,
+    required this.budgetsController,
+    required this.privacyListenable,
+  });
 
   final BudgetsController budgetsController;
+  final ValueListenable<bool> privacyListenable;
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +53,10 @@ class BudgetsPage extends StatelessWidget {
                 child: GestureDetector(
                   onTap: () => _showBudgetSheet(context, budget: budget),
                   onLongPress: () => _showBudgetActions(context, budget),
-                  child: BudgetCard(budget: budget)
+                  child: BudgetCard(
+                    budget: budget,
+                    privacyListenable: privacyListenable,
+                  )
                       .animate()
                       .fadeIn(duration: 320.ms)
                       .slideY(begin: 0.15, end: 0),

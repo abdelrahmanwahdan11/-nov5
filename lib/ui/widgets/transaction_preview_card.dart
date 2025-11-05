@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../core/localization/app_localizations.dart';
 import '../../data/models/transaction.dart';
+import 'sensitive_text.dart';
 
 class TransactionPreviewCard extends StatelessWidget {
-  const TransactionPreviewCard({super.key, required this.transaction});
+  const TransactionPreviewCard({
+    super.key,
+    required this.transaction,
+    required this.privacyListenable,
+  });
 
   final TransactionModel transaction;
+  final ValueListenable<bool> privacyListenable;
 
   @override
   Widget build(BuildContext context) {
@@ -87,13 +93,16 @@ class TransactionPreviewCard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                '${isExpense ? '-' : '+'}${transaction.amount.toStringAsFixed(2)} ${transaction.currency}',
+              SensitiveText(
+                privacyListenable: privacyListenable,
+                visibleText:
+                    '${isExpense ? '-' : '+'}${transaction.amount.toStringAsFixed(2)} ${transaction.currency}',
                 style: theme.textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                   color:
                       isExpense ? theme.colorScheme.error : theme.colorScheme.primary,
                 ),
+                textAlign: TextAlign.right,
               ),
               const SizedBox(height: 4),
               Text(

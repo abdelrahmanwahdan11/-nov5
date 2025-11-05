@@ -6,16 +6,19 @@ import 'package:flutter/material.dart';
 import '../../controllers/wallet_controller.dart';
 import '../../data/models/wallet_card.dart';
 import '../../core/localization/app_localizations.dart';
+import 'sensitive_text.dart';
 
 class WalletCardCarousel extends StatefulWidget {
   const WalletCardCarousel({
     super.key,
     required this.controller,
     required this.localization,
+    required this.privacyListenable,
   });
 
   final WalletController controller;
   final AppLocalizations localization;
+  final ValueListenable<bool> privacyListenable;
 
   @override
   State<WalletCardCarousel> createState() => _WalletCardCarouselState();
@@ -97,6 +100,7 @@ class _WalletCardCarouselState extends State<WalletCardCarousel> {
                           isFlipped: isFlipped,
                           onTap: () => widget.controller.toggleFlip(card.id),
                           localization: widget.localization,
+                          privacyListenable: widget.privacyListenable,
                         );
                       },
                     ),
@@ -118,6 +122,7 @@ class _WalletFlipCard extends StatelessWidget {
     required this.isFlipped,
     required this.onTap,
     required this.localization,
+    required this.privacyListenable,
   });
 
   final WalletCardModel card;
@@ -125,6 +130,7 @@ class _WalletFlipCard extends StatelessWidget {
   final bool isFlipped;
   final VoidCallback onTap;
   final AppLocalizations localization;
+  final ValueListenable<bool> privacyListenable;
 
   @override
   Widget build(BuildContext context) {
@@ -133,6 +139,7 @@ class _WalletFlipCard extends StatelessWidget {
       card: card,
       isActive: isActive,
       localization: localization,
+      privacyListenable: privacyListenable,
     );
     final back = _WalletCardBack(
       card: card,
@@ -172,11 +179,13 @@ class _WalletCardFront extends StatelessWidget {
     required this.card,
     required this.isActive,
     required this.localization,
+    required this.privacyListenable,
   });
 
   final WalletCardModel card;
   final bool isActive;
   final AppLocalizations localization;
+  final ValueListenable<bool> privacyListenable;
 
   @override
   Widget build(BuildContext context) {
@@ -245,8 +254,11 @@ class _WalletCardFront extends StatelessWidget {
                       color: Colors.white70,
                     ),
                   ),
-                  Text(
-                    '${card.currency} ${card.balance.toStringAsFixed(2)}',
+                  SensitiveText(
+                    privacyListenable: privacyListenable,
+                    visibleText:
+                        '${card.currency} ${card.balance.toStringAsFixed(2)}',
+                    hiddenText: '••••',
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,

@@ -11,9 +11,11 @@ class SessionController {
     bool isGuest,
     bool isAuthenticated,
     bool hasSeenCoach,
+    bool privacyEnabled,
   )   : entryState = ValueNotifier<AppEntryState>(initialState),
         isGuestNotifier = ValueNotifier<bool>(isGuest),
         showCoachNotifier = ValueNotifier<bool>(!hasSeenCoach),
+        privacyModeNotifier = ValueNotifier<bool>(privacyEnabled),
         _isAuthenticated = isAuthenticated,
         _hasSeenCoach = hasSeenCoach;
 
@@ -23,6 +25,7 @@ class SessionController {
   final ValueNotifier<bool> showCoachNotifier;
   bool _isAuthenticated;
   bool _hasSeenCoach;
+  final ValueNotifier<bool> privacyModeNotifier;
 
   static Future<SessionController> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -32,6 +35,7 @@ class SessionController {
     final isAuthenticated =
         prefs.getBool(AppConstants.prefIsAuthenticated) ?? false;
     final hasSeenCoach = prefs.getBool(AppConstants.prefSeenCoach) ?? false;
+    final privacyEnabled = prefs.getBool(AppConstants.prefPrivacyMode) ?? false;
 
     final initialState = !seenOnboarding
         ? AppEntryState.onboarding
@@ -45,6 +49,7 @@ class SessionController {
       isGuest,
       isAuthenticated,
       hasSeenCoach,
+      privacyEnabled,
     );
   }
 
@@ -118,9 +123,20 @@ class SessionController {
   bool get hasSeenOnboarding =>
       _prefs.getBool(AppConstants.prefSeenOnboarding) ?? false;
 
+  bool get privacyEnabled => privacyModeNotifier.value;
+
+  Future<void> setPrivacyMode(bool enabled) async {
+    if (privacyModeNotifier.value == enabled) {
+      return;
+    }
+    privacyModeNotifier.value = enabled;
+    await _prefs.setBool(AppConstants.prefPrivacyMode, enabled);
+  }
+
   void dispose() {
     entryState.dispose();
     isGuestNotifier.dispose();
     showCoachNotifier.dispose();
+    privacyModeNotifier.dispose();
   }
 }

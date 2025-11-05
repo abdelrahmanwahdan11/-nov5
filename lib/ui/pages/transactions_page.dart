@@ -7,6 +7,7 @@ import '../../controllers/transactions_controller.dart';
 import '../../core/localization/app_localizations.dart';
 import '../../data/models/transaction.dart';
 import '../../data/models/transaction_timeline.dart';
+import '../widgets/sensitive_text.dart';
 import '../widgets/sticky_header_delegate.dart';
 
 class TransactionsPage extends StatefulWidget {
@@ -14,10 +15,12 @@ class TransactionsPage extends StatefulWidget {
     super.key,
     required this.transactionsController,
     required this.searchController,
+    required this.privacyListenable,
   });
 
   final TransactionsController transactionsController;
   final SearchController searchController;
+  final ValueListenable<bool> privacyListenable;
 
   @override
   State<TransactionsPage> createState() => _TransactionsPageState();
@@ -143,10 +146,18 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                             .withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(16),
                                       ),
-                                      child: Text(
-                                        '${t.translate('totalShort')} ${section.total.toStringAsFixed(0)}',
-                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                              color: Theme.of(context).colorScheme.primary,
+                                      child: SensitiveText(
+                                        privacyListenable:
+                                            widget.privacyListenable,
+                                        visibleText:
+                                            '${t.translate('totalShort')} ${section.total.toStringAsFixed(0)}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
                                             ),
                                       ),
                                     ),
@@ -170,6 +181,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                                     child: _TransactionTile(
                                       transaction: tx,
                                       onAction: _handleArchive,
+                                      privacyListenable: widget.privacyListenable,
                                     )
                                         .animate(
                                           delay: (index * 50 + txIndex * 30).ms,
@@ -466,11 +478,13 @@ class _TransactionTile extends StatelessWidget {
   const _TransactionTile({
     required this.transaction,
     required this.onAction,
+    required this.privacyListenable,
   });
 
   final TransactionModel transaction;
   final Future<bool> Function(TransactionModel tx, DismissDirection direction)
       onAction;
+  final ValueListenable<bool> privacyListenable;
 
   @override
   Widget build(BuildContext context) {
@@ -544,14 +558,17 @@ class _TransactionTile extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      '${isExpense ? '-' : '+'}${transaction.amount.toStringAsFixed(2)} ${transaction.currency}',
+                    SensitiveText(
+                      privacyListenable: privacyListenable,
+                      visibleText:
+                          '${isExpense ? '-' : '+'}${transaction.amount.toStringAsFixed(2)} ${transaction.currency}',
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: isExpense
                             ? theme.colorScheme.error
                             : theme.colorScheme.primary,
                       ),
+                      textAlign: TextAlign.right,
                     ),
                     const SizedBox(height: 4),
                     Text(

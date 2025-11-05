@@ -22,6 +22,7 @@ import '../widgets/budget_card.dart';
 import '../widgets/transaction_preview_card.dart';
 import '../widgets/wallet_card_carousel.dart';
 import '../widgets/wallet_card_composer.dart';
+import '../widgets/sensitive_text.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -142,40 +143,89 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            ValueListenableBuilder<String>(
-                              valueListenable: widget.profileController.nameNotifier,
-                              builder: (context, name, _) {
-                                final firstName =
-                                    name.trim().isEmpty ? '' : name.split(' ').first;
-                                final greetingTemplate =
-                                    t.translate('homeGreetingName');
-                                final greeting = greetingTemplate
-                                    .replaceAll('{name}', firstName.isEmpty ? name : firstName);
-                                return Text(
-                                  greeting,
-                                  style: theme.textTheme.headlineMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      ValueListenableBuilder<String>(
+                                        valueListenable:
+                                            widget.profileController.nameNotifier,
+                                        builder: (context, name, _) {
+                                          final firstName = name.trim().isEmpty
+                                              ? ''
+                                              : name.split(' ').first;
+                                          final greetingTemplate =
+                                              t.translate('homeGreetingName');
+                                          final greeting = greetingTemplate.replaceAll(
+                                            '{name}',
+                                            firstName.isEmpty ? name : firstName,
+                                          );
+                                          return Text(
+                                            greeting,
+                                            style: theme.textTheme.headlineMedium?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          )
+                                              .animate()
+                                              .fadeIn(duration: 400.ms)
+                                              .slideY(begin: 0.3, end: 0);
+                                        },
+                                      ),
+                                      const SizedBox(height: 8),
+                                      ValueListenableBuilder<String>(
+                                        valueListenable:
+                                            widget.profileController.titleNotifier,
+                                        builder: (context, role, _) {
+                                          final subtitle = t
+                                              .translate('homeSubtitleRole')
+                                              .replaceAll('{role}', role);
+                                          return Text(
+                                            subtitle,
+                                            style: theme.textTheme.bodyMedium,
+                                          )
+                                              .animate()
+                                              .fadeIn(duration: 420.ms)
+                                              .slideY(begin: 0.2, end: 0);
+                                        },
+                                      ),
+                                    ],
                                   ),
-                                )
-                                    .animate()
-                                    .fadeIn(duration: 400.ms)
-                                    .slideY(begin: 0.3, end: 0);
-                              },
-                            ),
-                            const SizedBox(height: 8),
-                            ValueListenableBuilder<String>(
-                              valueListenable: widget.profileController.titleNotifier,
-                              builder: (context, role, _) {
-                                final subtitle =
-                                    t.translate('homeSubtitleRole').replaceAll('{role}', role);
-                                return Text(
-                                  subtitle,
-                                  style: theme.textTheme.bodyMedium,
-                                )
-                                    .animate()
-                                    .fadeIn(duration: 420.ms)
-                                    .slideY(begin: 0.2, end: 0);
-                              },
+                                ),
+                                const SizedBox(width: 8),
+                                ValueListenableBuilder<bool>(
+                                  valueListenable:
+                                      widget.sessionController.privacyModeNotifier,
+                                  builder: (context, hidden, __) {
+                                    final icon = hidden
+                                        ? Icons.visibility_off_rounded
+                                        : Icons.visibility_rounded;
+                                    final tooltip = hidden
+                                        ? t.translate('privacyQuickToggleOff')
+                                        : t.translate('privacyQuickToggleOn');
+                                    return IconButton(
+                                      tooltip: tooltip,
+                                      onPressed: () async {
+                                        HapticFeedback.selectionClick();
+                                        await widget.sessionController
+                                            .setPrivacyMode(!hidden);
+                                        if (!mounted) return;
+                                        final message = !hidden
+                                            ? t.translate('privacyHiddenToast')
+                                            : t.translate('privacyVisibleToast');
+                                        ScaffoldMessenger.of(context)
+                                          ..hideCurrentSnackBar()
+                                          ..showSnackBar(
+                                            SnackBar(content: Text(message)),
+                                          );
+                                      },
+                                      icon: Icon(icon),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
                             const Spacer(),
                             _SearchBar(
@@ -256,6 +306,8 @@ class _HomePageState extends State<HomePage> {
                       WalletCardCarousel(
                         controller: widget.walletController,
                         localization: t,
+                        privacyListenable:
+                            widget.sessionController.privacyModeNotifier,
                       ),
                       const SizedBox(height: 28),
                       Row(
@@ -289,7 +341,11 @@ class _HomePageState extends State<HomePage> {
                               physics: const BouncingScrollPhysics(),
                               itemBuilder: (context, index) {
                                 final budget = budgets[index];
-                                return BudgetCard(budget: budget)
+                                return BudgetCard(
+                                  budget: budget,
+                                  privacyListenable:
+                                      widget.sessionController.privacyModeNotifier,
+                                )
                                     .animate(delay: (index * 80).ms)
                                     .fadeIn(duration: 320.ms)
                                     .slideX(
@@ -357,8 +413,11 @@ class _HomePageState extends State<HomePage> {
                                                   .withOpacity(0.1),
                                               borderRadius: BorderRadius.circular(12),
                                             ),
-                                            child: Text(
-                                              '${t.translate('totalShort')} ${section.total.toStringAsFixed(0)}',
+                                            child: SensitiveText(
+                                              privacyListenable: widget
+                                                  .sessionController.privacyModeNotifier,
+                                              visibleText:
+                                                  '${t.translate('totalShort')} ${section.total.toStringAsFixed(0)}',
                                               style: theme.textTheme.labelSmall?.copyWith(
                                                 color: theme.colorScheme.primary,
                                               ),
@@ -370,6 +429,8 @@ class _HomePageState extends State<HomePage> {
                                       ...section.transactions.take(3).map(
                                         (tx) => TransactionPreviewCard(
                                           transaction: tx,
+                                          privacyListenable: widget
+                                              .sessionController.privacyModeNotifier,
                                         )
                                             .animate()
                                             .fadeIn(duration: 280.ms)
