@@ -1,413 +1,88 @@
 {
   "appTitle": "Mawaid",
-  "welcome": "Welcome",
-  "settings": "Settings",
-  "settingsProfileTitle": "Profile",
-  "settingsProfileSubtitle": "Update how your name, role, and story appear across the app.",
-  "settingsDisplayName": "Display name",
-  "settingsRoleTitle": "Role or focus",
-  "settingsBio": "Short bio",
-  "settingsEditProfile": "Edit profile",
-  "settingsProfileSaved": "Profile updated",
-  "settingsSaveChanges": "Save changes",
-  "settingsCoachLabel": "Show getting-started tips",
-  "settingsCoachDescription": "Enable the interactive overlay that highlights wallet, budgets, and timeline actions.",
-  "privacyMode": "Privacy mode",
-  "privacyModeDescription": "Blur balances and amounts until you tap to reveal.",
-  "privacyQuickToggleOn": "Hide sensitive balances",
-  "privacyQuickToggleOff": "Show sensitive balances",
-  "privacyHiddenToast": "Sensitive values hidden",
-  "privacyVisibleToast": "Sensitive values visible",
-  "privacyTapToReveal": "Tap to reveal",
-  "privacyTapToHide": "Tap to hide",
-  "privacyHiddenLabel": "Hidden value",
-  "theme": "Theme",
-  "lightMode": "Light",
-  "darkMode": "Dark",
-  "systemMode": "System",
-  "language": "Language",
-  "arabic": "Arabic",
-  "english": "English",
+  "themeLight": "Light",
+  "themeDark": "Dark",
+  "themeSystem": "System",
+  "languageEnglish": "English",
+  "languageArabic": "Arabic",
   "primaryColor": "Primary color",
-  "pickAColor": "Pick a color",
-  "settingsDisplayPreferencesTitle": "Display & motion",
-  "settingsCardStyleLabel": "Card surface style",
-  "settingsCardStyleGlass": "Glass",
-  "settingsCardStyleSolid": "Vibrant",
-  "settingsCardStyleSubtle": "Subtle",
-  "settingsReduceMotionLabel": "Reduce motion",
-  "settingsReduceMotionSubtitle": "Minimise decorative animations and use instant transitions.",
-  "save": "Save",
-  "cancel": "Cancel",
-  "auto": "Auto",
-  "guest": "Continue as guest",
-  "navHome": "Home",
-  "navBudgets": "Budgets",
-  "navGuides": "Guides",
-  "navTransactions": "Transactions",
-  "navSettings": "Settings",
-  "homeGreeting": "Hello, explorer",
-  "homeGreetingName": "Welcome back, {name}",
-  "homeSubtitle": "Track spending, budgets, and insights in one glassy hub.",
-  "homeSubtitleRole": "Curated for your role as {role}.",
-  "walletTitle": "Your wallets",
-  "walletCountLabel": "{count} cards ready for your flows.",
-  "walletAddCard": "Add a wallet card",
-  "walletCardAdded": "New wallet card saved",
-  "walletCardRemoved": "Wallet card removed",
-  "noWalletCards": "Create your first wallet card to track balances here.",
-  "walletManage": "Manage",
-  "walletManagerTitle": "Manage wallet cards",
-  "walletManagerSubtitle": "Organise your cards, reorder priorities, and curate the perfect stack.",
-  "walletStackPreviewTitle": "Stack preview",
-  "walletReorderHint": "Drag and drop cards to reorder. Long press to pick one up.",
-  "walletReordered": "Wallet order updated",
-  "walletPrimaryBadge": "Primary",
-  "walletSetPrimary": "Set as primary",
-  "walletPrimaryUpdated": "Primary wallet updated",
-  "walletListMeta": "{balance} {currency} • {network}",
-  "walletRemoveTitle": "Remove wallet card",
-  "walletRemoveMessage": "Are you sure you want to remove {title}? You can recreate it at any time.",
-  "walletBalanceLabel": "Balance",
-  "walletExpiryLabel": "Expiry",
-  "walletHolderLabel": "Card holder",
-  "walletNetworkLabel": "Network",
-  "walletNumberLabel": "Card number",
-  "walletNotesLabel": "Notes",
-  "walletNotesValue": "Tap manage to tweak limits or freeze the wallet instantly.",
-  "walletSwipeHint": "Swipe for more wallets",
-  "walletAddTitle": "Create a custom wallet card",
-  "walletNameLabel": "Wallet name",
-  "walletAmountLabel": "Starting balance",
-  "walletCurrencyLabel": "Currency",
-  "walletSaveCard": "Save card",
-  "invalidAmount": "Enter a valid amount",
-  "coachTitle": "Need a quick tour?",
-  "coachDescription": "Discover how to flip cards, explore budgets, and replay guidance anytime.",
-  "coachShowMe": "Show me",
-  "coachRemind": "We will remind you later.",
-  "coachRemindLater": "Maybe later",
-  "coachOverlayTitle": "Control the app like a pro",
-  "coachOverlaySubtitle": "Three quick highlights to get you moving confidently:",
-  "coachStepWallet": "Tap cards to flip and reveal full wallet details.",
-  "coachStepBudgets": "Visit Budgets to adjust limits and monitor progress.",
-  "coachStepTimeline": "The Timeline groups transactions with smart sticky headers.",
-  "coachGotIt": "Got it",
-  "guidesTitle": "Hey {name}, here is your playbook",
-  "guidesFallbackName": "Explorer",
-  "guidesSubtitle": "Stories, rituals, and how-to articles to master Mawaid.",
-  "guidesFilterAll": "All",
-  "guidesFilterBasics": "Essentials",
-  "guidesFilterAutomation": "Automation",
-  "guidesFilterSecurity": "Security",
-  "guidesReadMore": "Read insight",
-  "guidesSaved": "Saved to reading list",
-  "guidesEmpty": "No guides yet. Try another filter.",
-  "guideBasicsTrack": "Track spending with the glass wallet",
-  "guideBasicsTrackDesc": "Flip each card to view balances, currencies, and contextual advice across your wallets.",
-  "guideAutomationFlows": "Build automation flows that keep budgets fresh",
-  "guideAutomationFlowsDesc": "Design scheduled transfers, thresholds, and alerts that update your mock accounts instantly.",
-  "guidePrivacyTips": "Privacy-first settings for mindful sharing",
-  "guidePrivacyTipsDesc": "Toggle guest mode, blur balances, and configure quick-hide gestures for public spaces.",
-  "guideGuestMode": "Guest journeys that still feel personal",
-  "guideGuestModeDesc": "Customize language, theme, and color so guests can explore without risking live data.",
-  "budgetsOverview": "Active budgets",
-  "viewAll": "View all",
-  "noBudgets": "No budgets yet. Create one to stay on track!",
-  "recentActivity": "Recent activity",
-  "totalShort": "Total",
-  "spent": "Spent",
-  "remaining": "Remaining",
-  "overBudget": "Over budget",
-  "searchPlaceholder": "Search anything...",
-  "recentSearches": "Recent searches",
-  "clear": "Clear",
-  "reset": "Reset",
-  "refresh": "Refresh",
-  "noSearchHistory": "You have no recent searches yet.",
+  "homeTitle": "Home",
+  "walletsTitle": "Wallets",
+  "transactionsTitle": "Transactions",
   "budgetsTitle": "Budgets",
-  "addBudget": "Add budget",
-  "edit": "Edit",
-  "delete": "Delete",
-  "budgetDeleted": "Budget removed",
-  "undo": "Undo",
-  "createBudget": "Create budget",
-  "editBudget": "Edit budget",
-  "category": "Category",
-  "required": "Required",
-  "limit": "Limit",
-  "invalidNumber": "Enter a valid number",
-  "selectColor": "Select a color",
-  "create": "Create",
-  "transactionsTitle": "Transactions timeline",
-  "searchTransactions": "Search transactions",
-  "allCategories": "All",
-  "tags": "Tags",
-  ,"advancedFiltersTitle": "Advanced filters"
-  ,"editFilters": "Compose filters"
-  ,"noSavedViews": "No saved views yet."
-  ,"noSavedViewsHint": "Save your favourite filter combinations for quick access."
-  ,"activeFilterTitle": "Active filter"
-  ,"clearFilter": "Clear filter"
-  ,"applyFilters": "Apply filters"
-  ,"saveViewAction": "Save view"
-  ,"savedViewApplied": "Filter applied"
-  ,"savedViewCreated": "Saved view \"{name}\" ready to use"
-  ,"savedViewDeleted": "Removed view \"{name}\""
-  ,"includeCurrentCategory": "Include current category"
-  ,"includeCurrentTags": "Include current tags"
-  ,"minAmountLabel": "Minimum amount"
-  ,"maxAmountLabel": "Maximum amount"
-  ,"merchantContains": "Merchant contains"
-  ,"dateRange": "Date range"
-  ,"selectDates": "Select date range"
-  ,"typeAny": "Any type"
-  ,"transactionTypeLabel": "Transaction type"
-  ,"transactionStatusLabel": "Status"
-  ,"statusAny": "Any status"
-  ,"filterTypeIncome": "Income"
-  ,"filterTypeExpense": "Expense"
-  ,"quickFilterDraft": "Quick filter"
-  ,"missingNameError": "Enter a name to save this view"
-  ,"invalidRangeError": "Minimum amount must be less than maximum"
-  ,"editView": "Edit"
-  ,"deleteView": "Delete"
-  ,"savedViewHint": "Tap to apply this saved filter"
-  ,"merchantProfileTitle": "{merchant} profile"
-  ,"merchantAverageSpend": "Average spend"
-  ,"merchantTransactionsCount": "{count} transactions"
-  ,"merchantTopCategories": "Top categories"
-  ,"merchantTags": "Popular tags"
-  ,"merchantRecentActivity": "Recent activity"
-  ,"viewMerchantProfile": "View merchant profile"
-  ,"noteLabel": "Note"
-  ,"attachmentLabel": "Attachment"
-  ,"viewAttachment": "View attachment"
-  "noTransactionsFound": "No transactions match your filters.",
-  "categorized": "Categorized",
-  "archived": "Archived",
-  "categorize": "Categorize",
-  "archive": "Archive",
-  "completed": "Completed",
-  "pending": "Pending",
-  "scheduled": "Scheduled"
-  ,"onboardingSkip": "Skip"
-  ,"onboardingNext": "Next"
-  ,"onboardingStart": "Get started"
-  ,"onboardingTheme": "Choose a theme"
-  ,"onboardingLanguage": "Preferred language"
-  ,"onboardingTitle1": "Design your glassy finance hub"
-  ,"onboardingBody1": "Curate widgets, gradients, and quick actions that feel tailor-made for your flow."
-  ,"onboardingTitle2": "Set goals and grow steadily"
-  ,"onboardingBody2": "Track budgets, jars, and recurring plans with playful progress feedback."
-  ,"onboardingTitle3": "Explore insights without friction"
-  ,"onboardingBody3": "Search, compare, and learn faster with fluid timelines and smart filters."
-  ,"authWelcomeTitle": "Let’s tailor your Mawaid experience"
-  ,"authWelcomeSubtitle": "Sign in to sync preferences or continue as a guest to explore instantly."
-  ,"login": "Sign in"
-  ,"createAccount": "Create account"
-  ,"forgotPassword": "Forgot password?"
-  ,"email": "Email"
-  ,"invalidEmail": "Enter a valid email"
-  ,"password": "Password"
-  ,"weakPassword": "Choose a stronger password"
-  ,"loginHeadline": "Welcome back"
-  ,"welcomeBack": "Signed in successfully"
-  ,"noAccountPrompt": "New here?"
-  ,"signupHeadline": "Set up your smart wallet"
-  ,"fullName": "Full name"
-  ,"confirmPassword": "Confirm password"
-  ,"passwordMismatch": "Passwords do not match"
-  ,"accountCreated": "Account created"
-  ,"haveAccountPrompt": "Already have an account?"
-  ,"forgotPasswordHeadline": "Need a reset link?"
-  ,"forgotPasswordBody": "We’ll send a quick email so you can create a fresh password."
-  ,"sendResetLink": "Send link"
-  ,"resetLinkSent": "Reset link sent"
-  ,"stayAsGuest": "Keep exploring as guest"
-  ,"guestModeDescription": "Browsing in guest mode—create an account anytime to sync data."
-  ,"signedInDescription": "You’re signed in. Manage appearance or replay onboarding at any time."
-  ,"signOut": "Sign out"
-  ,"account": "Account & access"
-  ,"onboardingRestarted": "Onboarding will replay next time"
-  ,"replayOnboarding": "Replay onboarding"
-  ,"signedOut": "Signed out"
-  ,"guestModeConfirmed": "Guest mode activated"
-  ,"savingsGoalsTitle": "Savings jars"
-  ,"addGoal": "Add goal"
-  ,"goalDeposit": "Boost progress"
-  ,"goalDepositSubtitle": "Add a quick top-up"
-  ,"goalWithdraw": "Move out"
-  ,"goalWithdrawSubtitle": "Free up this amount"
-  ,"editGoal": "Edit goal"
-  ,"deleteGoal": "Delete goal"
-  ,"goalBoosted": "Goal boosted for {goal}"
-  ,"goalReduced": "Goal adjusted for {goal}"
-  ,"goalWithdrawLimit": "Amount exceeds saved balance"
-  ,"goalCurrentLimit": "Saved amount cannot exceed target"
-  ,"goalImage": "Cover image URL"
-  ,"goalDueDate": "Target date • {date}"
-  ,"goalColor": "Accent color"
-  ,"goalCreated": "Goal created"
-  ,"goalUpdated": "Goal updated"
-  ,"goalName": "Goal name"
-  ,"goalTarget": "Target amount"
-  ,"goalCurrent": "Current saved"
-  ,"goalDueToday": "Due today"
-  ,"goalDueIn": "{days} days to go"
-  ,"goalQuickBoost": "Boost"
-  ,"goalQuickPause": "Pause"
-  ,"goalEmptyTitle": "Design your first savings jar"
-  ,"goalEmptySubtitle": "Create a visual jar to watch your progress grow with every transfer."
-  ,"selectionActive": "{count} selected"
-  ,"bulkArchive": "Archive"
-  ,"bulkTag": "Tag focus"
-  ,"bulkArchived": "Archived {count} items"
-  ,"bulkTagged": "Tagged {count} items"
-  ,"undoArchiveLabel": "Undo archive ({count})"
-  ,"undoTagLabel": "Undo tag ({count})"
-  ,"undoApplied": "Change reverted"
-  ,"recurringTitle": "Scheduled & recurring"
-  ,"recurringHint": "Runs automatically when due"
-  ,"recurringNext": "Next on {date}"
-  ,"executeNow": "Run now"
-  ,"skip": "Skip"
-  ,"recurringExecuted": "Posted {title}"
-  ,"recurringDeferred": "Deferred {title}"
-  ,"frequency_weekly": "Weekly"
-  ,"frequency_monthly": "Monthly"
-  ,"frequency_quarterly": "Quarterly"
-  ,"frequency_yearly": "Yearly"
-  ,"selectedCount": "{count} selected"
-  ,"activeBudgets": "Active budgets"
-  ,"quickSendTitle": "Quick send favorites"
-  ,"quickSendManage": "Manage"
-  ,"quickSendAmountShort": "{amount} {currency}"
-  ,"quickSendAction": "Send"
-  ,"quickSendTitleRecipient": "Send to {name}"
-  ,"quickSendAmountLabel": "Amount to send"
-  ,"quickSendTransactionTitle": "Quick transfer"
-  ,"quickSendSuccess": "Sent {amount} to {name}"
-  ,"goalsPeekTitle": "Saving momentum"
-  ,"goalsPeekSummary": "You saved {saved} of {target} across goals"
-  ,"upcomingRecurringTitle": "Next scheduled payment"
-  ,"upcomingRecurringButton": "View timeline"
-  ,"navInsights": "Insights"
-  ,"quickActionInsights": "Insights"
-  ,"quickActionBudgets": "Budgets"
-  ,"quickActionTransactions": "Transactions"
-  ,"quickActionStatements": "Statements"
-  ,"quickActionCalculators": "Calculators"
-  ,"quickActionGuides": "Guides"
-  ,"analyticsOverviewTitle": "Financial pulse"
-  ,"analyticsOverviewSubtitle": "Track income, spending, and savings"
-  ,"analyticsSavingsLabel": "Savings rate {percent}%"
-  ,"analyticsEmptyCategories": "No categories yet"
-  ,"insightsTitle": "Insights"
-  ,"insightsRangeMonth": "30 days"
-  ,"insightsRangeQuarter": "90 days"
-  ,"insightsRangeYear": "12 months"
-  ,"insightsCashflowTitle": "Cashflow overview"
-  ,"insightsNetTitle": "Net change"
-  ,"insightsCategoriesTitle": "Category spotlight"
-  ,"insightsHeatmapTitle": "Monthly heatmap"
-  ,"insightsHeatmapEmpty": "No spending recorded for this month"
-  ,"insightsHeatmapNoTransactions": "No transactions for that day"
-  ,"insightsTransactionsForDay": "Transactions on {date}"
-  ,"statementTitle": "Monthly statement"
-  ,"statementCopyJson": "Copy as JSON"
-  ,"statementCopied": "Statement copied"
-  ,"statementHeadline": "Statement for {month}"
-  ,"statementTransactions": "Transactions"
-  ,"statementEmpty": "No transactions recorded"
-  ,"statementTopCategories": "Top categories"
-  ,"settingsInsightsCenter": "Open insights"
-  ,"settingsInsightsCenterSubtitle": "Charts, comparisons, and trends"
-  ,"settingsStatements": "Printable statement"
-  ,"settingsStatementsSubtitle": "Viewing {month}"
-  ,"settingsCalculators": "Local calculators"
-  ,"settingsCalculatorsSubtitle": "Fee on {amount} at {rate}%"
-  ,"settingsGuidesCenter": "Guides & tips"
-  ,"settingsGuidesCenterSubtitle": "Browse walkthroughs"
-  ,"settingsResourcesTitle": "Resources"
-  ,"calculatorsTitle": "Calculators"
-  ,"calculatorFeeTitle": "Fee calculator"
-  ,"calculatorFeeSubtitle": "Estimate card or service fees"
-  ,"calculatorAmount": "Amount"
-  ,"calculatorRate": "Rate %"
-  ,"calculatorFeeResult": "Estimated fee: {value}"
-  ,"calculatorInterestTitle": "Interest growth"
-  ,"calculatorInterestSubtitle": "Compound over time"
-  ,"calculatorPrincipal": "Principal"
-  ,"calculatorPeriods": "Months"
-  ,"calculatorInterestResult": "Projected gain: {value}"
-  ,"settingsNotificationsTitle": "Notification center"
-  ,"settingsNotificationsCenter": "View inbox"
-  ,"settingsNotificationsSubtitle": "{count} unread updates"
-  ,"settingsQuickActionsTitle": "Quick actions"
-  ,"settingsQuickActionsReset": "Restore defaults"
-  ,"shortcutsSheetTitle": "Hold for shortcuts"
-  ,"settingsQuickTab_home": "Home tab"
-  ,"settingsQuickTab_insights": "Insights tab"
-  ,"settingsQuickTab_budgets": "Budgets tab"
-  ,"settingsQuickTab_transactions": "Transactions tab"
-  ,"settingsQuickTab_settings": "Settings tab"
-  ,"settingsSupportTitle": "Support & feedback"
-  ,"settingsHelpCenter": "Help center"
-  ,"settingsHelpCenterSubtitle": "Browse {count} guides and FAQs."
-  ,"settingsRateApp": "Rate Mawaid"
-  ,"settingsRatePrompt": "Share how we’re doing."
-  ,"settingsRateThanks": "Thanks for rating us {score}★"
-  ,"settingsContactSupport": "Contact support"
-  ,"settingsContactSupportSubtitle": "Copy our email or start a draft."
-  ,"notificationsTitle": "Notifications"
-  ,"notificationsMarkAll": "Mark all as read"
-  ,"notificationsMarkAllSubtitle": "Remove badges and archive alerts."
-  ,"notificationsFilterAll": "All"
-  ,"notificationsFiltersuccess": "Success"
-  ,"notificationsFilteralert": "Alerts"
-  ,"notificationsFiltertip": "Tips"
-  ,"notificationsFilterupdate": "Updates"
-  ,"notificationsEmptyTitle": "All caught up"
-  ,"notificationsEmptySubtitle": "We’ll let you know when new activity appears."
-  ,"shortcutNotifications": "Notifications"
-  ,"shortcutWallets": "Wallets"
-  ,"shortcutInsights": "Insights"
-  ,"shortcutStatement": "Statement"
-  ,"shortcutCalculators": "Calculators"
-  ,"shortcutBudgets": "Budgets"
-  ,"shortcutTransactions": "Transactions"
-  ,"shortcutHelp": "Help center"
-  ,"shortcutContact": "Contact support"
-  ,"shortcutRating": "Rate app"
-  ,"timeJustNow": "Just now"
-  ,"timeMinutesAgo": "{count} min ago"
-  ,"timeHoursAgo": "{count} hr ago"
-  ,"timeYesterday": "Yesterday"
-  ,"timeDaysAgo": "{count} days ago"
-  ,"helpCenterTitle": "Help center"
-  ,"helpCenterClearHistory": "Clear recent searches"
-  ,"helpCenterSearchHint": "Search guides, tags, or topics"
-  ,"helpCenterCategoryAll": "All categories"
-  ,"helpCenterRelated": "Related articles"
-  ,"helpCenterEmptyTitle": "No matches yet"
-  ,"helpCenterEmptySubtitle": "Try adjusting filters or browse another topic."
-  ,"helpCenterSearchHistory": "Recent"
-  ,"ratingTitle": "Rate Mawaid"
-  ,"ratingHeadline": "We’d love your feedback"
-  ,"ratingFeedbackLabel": "Additional thoughts (optional)"
-  ,"ratingFeedbackHint": "Tell us what delighted you or what could improve."
-  ,"ratingThanks": "Thank you for helping us grow!"
-  ,"contactSupportTitle": "Need a hand?"
-  ,"contactSupportBody": "Copy our support email or keep a draft ready for later."
-  ,"contactCopyEmail": "Copy email"
-  ,"contactDraftMail": "Start draft"
-  ,"contactDraftHint": "Open your mail app with a prefilled subject."
-  ,"contactEmailCopied": "Support email copied"
-  ,"contactDraftSaved": "Draft ready in your mail app"
-  ,"releaseNotesTitle": "What’s new in {version}"
-  ,"releaseNotesNotifications": "A polished notification center with filters and quick actions."
-  ,"releaseNotesHelpCenter": "Guided help hub with categories, search history, and article sheets."
-  ,"releaseNotesShortcuts": "Customize long-press shortcuts per tab and reveal them instantly."
-  ,"releaseNotesCTA": "Explore now"
+  "settingsTitle": "Settings",
+  "insightsTitle": "Insights",
+  "onboardingTitle1": "Welcome to Mawaid",
+  "onboardingSubtitle1": "Manage cards, budgets, and insights in one beautiful space.",
+  "onboardingTitle2": "Stay in control",
+  "onboardingSubtitle2": "Track your spending in real time with rich analytics.",
+  "onboardingTitle3": "Personalize everything",
+  "onboardingSubtitle3": "Switch languages, colors, and themes instantly.",
+  "onboardingSkip": "Skip",
+  "onboardingNext": "Next",
+  "onboardingStart": "Get started",
+  "authWelcomeBack": "Welcome back",
+  "authCreateAccount": "Create account",
+  "authGuest": "Continue as guest",
+  "authEmail": "Email",
+  "authPassword": "Password",
+  "authConfirmPassword": "Confirm password",
+  "authPhone": "Phone",
+  "authName": "Full name",
+  "authForgotPassword": "Forgot password?",
+  "authResetPassword": "Reset password",
+  "authSendLink": "Send reset link",
+  "authSignIn": "Sign in",
+  "authSignUp": "Sign up",
+  "authHaveAccount": "Already have an account?",
+  "authNeedAccount": "Need an account?",
+  "authPasswordWeak": "Password is too weak",
+  "authPasswordMedium": "Password strength: medium",
+  "authPasswordStrong": "Password strength: strong",
+  "authInvalidEmail": "Enter a valid email",
+  "authInvalidPhone": "Enter a valid phone",
+  "authRequiredField": "Required field",
+  "authPasswordMismatch": "Passwords do not match",
+  "homeHello": "Hello {name}",
+  "homeBalances": "Balances",
+  "homeAddCard": "Add card",
+  "walletPrimary": "Primary",
+  "walletMakePrimary": "Make primary",
+  "walletDelete": "Remove",
+  "walletAddTitle": "Add new wallet",
+  "walletLabel": "Card label",
+  "walletNumber": "Card number",
+  "walletBalance": "Balance",
+  "walletCurrency": "Currency",
+  "walletSave": "Save",
+  "walletCancel": "Cancel",
+  "transactionsSearchHint": "Search transactions",
+  "transactionsFilter": "Filters",
+  "transactionsEmpty": "No transactions found",
+  "budgetsCreate": "Create budget",
+  "budgetsEmpty": "No budgets yet",
+  "settingsAppearance": "Appearance",
+  "settingsLanguage": "Language",
+  "settingsTheme": "Theme",
+  "settingsPrimaryColor": "Primary color",
+  "settingsAccount": "Account",
+  "settingsDisplayName": "Display name",
+  "settingsSave": "Save changes",
+  "settingsTutorial": "Replay tutorial",
+  "settingsPrivacy": "Privacy mode",
+  "tutorialTitle": "Quick guide",
+  "tutorialHome": "Discover your balances, quick actions, and insights here.",
+  "tutorialWallets": "Manage cards and flip them for more details.",
+  "tutorialTransactions": "Search, filter, and organize every move.",
+  "tutorialSettings": "Switch themes, language, and more.",
+  "insightsEmpty": "Not enough data yet",
+  "passwordShow": "Show",
+  "passwordHide": "Hide",
+  "strengthLabel": "Strength",
+  "guestWelcome": "You are browsing as guest",
+  "logout": "Sign out",
+  "sessionContinue": "Continue",
+  "sessionBack": "Back",
+  "errorGeneric": "Something went wrong",
+  "retry": "Try again"
 }

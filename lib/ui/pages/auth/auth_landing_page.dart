@@ -1,88 +1,56 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../../controllers/session_controller.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_scope.dart';
 
 class AuthLandingPage extends StatelessWidget {
-  const AuthLandingPage({
-    super.key,
-    required this.sessionController,
-  });
-
-  final SessionController sessionController;
+  const AuthLandingPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-
+    final l10n = context.l10n;
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                t.translate('authWelcomeTitle'),
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ).animate().fadeIn(duration: 360.ms).slideY(begin: 0.2, end: 0),
-              const SizedBox(height: 12),
-              Text(
-                t.translate('authWelcomeSubtitle'),
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
-                ),
-              ).animate().fadeIn(duration: 380.ms).slideY(begin: 0.2, end: 0),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pushNamed(AppRouter.login);
-                  },
-                  child: Text(t.translate('login')),
-                ),
-              ).animate().fadeIn(duration: 320.ms).slideY(begin: 0.2, end: 0),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.of(context).pushNamed(AppRouter.signup);
-                  },
-                  child: Text(t.translate('createAccount')),
-                ),
-              ).animate().fadeIn(duration: 340.ms).slideY(begin: 0.2, end: 0),
-              const SizedBox(height: 12),
-              TextButton.icon(
-                onPressed: () {
-                  sessionController.continueAsGuest();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(t.translate('guestModeConfirmed')),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.bolt_rounded),
-                label: Text(t.translate('guest')),
-              ).animate().fadeIn(duration: 360.ms).slideY(begin: 0.2, end: 0),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.center,
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pushNamed(AppRouter.forgotPassword);
-                  },
-                  child: Text(t.translate('forgotPassword')), 
-                ),
-              ),
-            ],
-          ),
+      appBar: AppBar(title: Text(l10n.translate('authCreateAccount'))),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Spacer(),
+            Icon(Icons.wallet, size: 88, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(height: 32),
+            Text(
+              l10n.translate('authWelcomeBack'),
+              style: Theme.of(context).textTheme.headlineMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l10n.translate('guestWelcome'),
+              textAlign: TextAlign.center,
+            ),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pushNamed(AppRouter.login),
+              style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+              child: Text(l10n.translate('authSignIn')),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).pushNamed(AppRouter.signup),
+              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+              child: Text(l10n.translate('authSignUp')),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () {
+                AppScope.of(context).sessionController.continueAsGuest();
+                AppRouter.navigator(context)
+                    .pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
+              },
+              child: Text(l10n.translate('authGuest')),
+            ),
+          ],
         ),
       ),
     );

@@ -1,173 +1,125 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../controllers/locale_controller.dart';
 import '../../controllers/session_controller.dart';
-import '../../controllers/theme_controller.dart';
 import '../../core/localization/app_localizations.dart';
+import '../../core/routing/app_router.dart';
+import '../../core/utils/app_scope.dart';
 
 class OnboardingPage extends StatefulWidget {
-  const OnboardingPage({
-    super.key,
-    required this.themeController,
-    required this.localeController,
-    required this.sessionController,
-  });
-
-  final ThemeController themeController;
-  final LocaleController localeController;
-  final SessionController sessionController;
+  const OnboardingPage({super.key});
 
   @override
   State<OnboardingPage> createState() => _OnboardingPageState();
 }
 
 class _OnboardingPageState extends State<OnboardingPage> {
-  final PageController _pageController = PageController();
-  Timer? _timer;
-  int _currentIndex = 0;
+  final _controller = PageController();
+  late Timer _timer;
+  int _index = 0;
 
-  List<_OnboardingSlide> get _slides => const [
-        _OnboardingSlide(
-          icon: Icons.auto_awesome_rounded,
-          titleKey: 'onboardingTitle1',
-          bodyKey: 'onboardingBody1',
-        ),
-        _OnboardingSlide(
-          icon: Icons.savings_rounded,
-          titleKey: 'onboardingTitle2',
-          bodyKey: 'onboardingBody2',
-        ),
-        _OnboardingSlide(
-          icon: Icons.explore_rounded,
-          titleKey: 'onboardingTitle3',
-          bodyKey: 'onboardingBody3',
-        ),
-      ];
+  final _pages = const [0, 1, 2];
 
   @override
   void initState() {
     super.initState();
-    _startAutoplay();
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  void _startAutoplay() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
-      final next = (_currentIndex + 1) % _slides.length;
-      _pageController.animateToPage(
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      final next = (_index + 1) % _pages.length;
+      _controller.animateToPage(
         next,
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.fastOutSlowIn,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
       );
     });
   }
 
-  void _onPageChanged(int index) {
-    setState(() => _currentIndex = index);
+  @override
+  void dispose() {
+    _timer.cancel();
+    _controller.dispose();
+    super.dispose();
   }
 
-  Future<void> _completeOnboarding() async {
-    await widget.sessionController.markOnboardingSeen();
-  }
-
-  void _goToNext() {
-    if (_currentIndex == _slides.length - 1) {
-      unawaited(_completeOnboarding());
-    } else {
-      final next = _currentIndex + 1;
-      _pageController.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeOutCubic,
-      );
-    }
+  void _complete() {
+    final scope = AppScope.of(context);
+    scope.sessionController.completeOnboarding();
+    AppRouter.navigator(context)
+        .pushNamedAndRemoveUntil(AppRouter.authLanding, (route) => false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final t = AppLocalizations.of(context);
-
+    final l10n = context.l10n;
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Row(
-                children: [
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () => _completeOnboarding(),
-                    child: Text(t.translate('onboardingSkip')),
-                  ),
-                ],
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton(
+                onPressed: _complete,
+                child: Text(l10n.translate('onboardingSkip')),
               ),
             ),
             Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: _slides.length,
-                onPageChanged: _onPageChanged,
-                itemBuilder: (context, index) {
-                  final slide = _slides[index];
-                  return _OnboardingCard(slide: slide);
-                },
+              child: PageView(
+                controller: _controller,
+                onPageChanged: (value) => setState(() => _index = value),
+                children: [
+                  _OnboardingSlide(
+                    title: l10n.translate('onboardingTitle1'),
+                    subtitle: l10n.translate('onboardingSubtitle1'),
+                    icon: Icons.wallet,
+                  ),
+                  _OnboardingSlide(
+                    title: l10n.translate('onboardingTitle2'),
+                    subtitle: l10n.translate('onboardingSubtitle2'),
+                    icon: Icons.timeline,
+                  ),
+                  _OnboardingSlide(
+                    title: l10n.translate('onboardingTitle3'),
+                    subtitle: l10n.translate('onboardingSubtitle3'),
+                    icon: Icons.palette,
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                _slides.length,
-                (index) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 320),
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  height: 10,
-                  width: _currentIndex == index ? 26 : 12,
+              children: List.generate(_pages.length, (i) {
+                final active = i == _index;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: active ? 24 : 12,
+                  height: 12,
                   decoration: BoxDecoration(
-                    color: _currentIndex == index
-                        ? theme.colorScheme.primary
-                        : theme.colorScheme.primary.withOpacity(0.25),
-                    borderRadius: BorderRadius.circular(20),
+                    color: active
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ).animate().fadeIn(duration: 260.ms).scale(),
-              ),
+                );
+              }),
             ),
             const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  _ThemeSwitcher(controller: widget.themeController, t: t),
-                  const SizedBox(height: 16),
-                  _LocaleSwitcher(controller: widget.localeController, t: t),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _goToNext,
-                      child: Text(
-                        _currentIndex == _slides.length - 1
-                            ? t.translate('onboardingStart')
-                            : t.translate('onboardingNext'),
-                      ),
-                    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.2, end: 0),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+              child: ElevatedButton(
+                onPressed: _complete,
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                child: Text(
+                  _index == _pages.length - 1
+                      ? l10n.translate('onboardingStart')
+                      : l10n.translate('onboardingNext'),
+                ),
               ),
             ),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -175,139 +127,36 @@ class _OnboardingPageState extends State<OnboardingPage> {
   }
 }
 
-class _OnboardingCard extends StatelessWidget {
-  const _OnboardingCard({required this.slide});
+class _OnboardingSlide extends StatelessWidget {
+  const _OnboardingSlide({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
 
-  final _OnboardingSlide slide;
+  final String title;
+  final String subtitle;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            slide.icon,
-            size: 96,
-            color: theme.colorScheme.primary,
-          ).animate().fadeIn(duration: 420.ms).scale(begin: const Offset(0.6, 0.6)),
+          Icon(icon, size: 90, color: theme.colorScheme.primary),
           const SizedBox(height: 32),
-          Text(
-            t.translate(slide.titleKey),
-            textAlign: TextAlign.center,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ).animate().fadeIn(duration: 380.ms).slideY(begin: 0.3, end: 0),
+          Text(title, style: theme.textTheme.headlineMedium, textAlign: TextAlign.center),
           const SizedBox(height: 16),
           Text(
-            t.translate(slide.bodyKey),
+            subtitle,
+            style: theme.textTheme.bodyLarge,
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withOpacity(0.75),
-            ),
-          ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2, end: 0),
+          ),
         ],
       ),
     );
   }
-}
-
-class _ThemeSwitcher extends StatelessWidget {
-  const _ThemeSwitcher({required this.controller, required this.t});
-
-  final ThemeController controller;
-  final AppLocalizations t;
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: controller.themeMode,
-      builder: (context, mode, _) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              t.translate('onboardingTheme'),
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 12,
-              children: ThemeMode.values.map((value) {
-                final isActive = value == mode;
-                final labelKey = switch (value) {
-                  ThemeMode.system => 'systemMode',
-                  ThemeMode.light => 'lightMode',
-                  ThemeMode.dark => 'darkMode',
-                };
-                return ChoiceChip(
-                  label: Text(t.translate(labelKey)),
-                  selected: isActive,
-                  onSelected: (_) => controller.toggleTheme(value),
-                );
-              }).toList(),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _LocaleSwitcher extends StatelessWidget {
-  const _LocaleSwitcher({required this.controller, required this.t});
-
-  final LocaleController controller;
-  final AppLocalizations t;
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<Locale>(
-      valueListenable: controller.locale,
-      builder: (context, locale, _) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              t.translate('onboardingLanguage'),
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: 8),
-            SegmentedButton<Locale>(
-              segments: [
-                ButtonSegment(
-                  value: const Locale('en'),
-                  label: Text(t.translate('english')),
-                ),
-                ButtonSegment(
-                  value: const Locale('ar'),
-                  label: Text(t.translate('arabic')),
-                ),
-              ],
-              selected: {locale},
-              onSelectionChanged: (value) {
-                controller.updateLocale(value.first);
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _OnboardingSlide {
-  const _OnboardingSlide({
-    required this.icon,
-    required this.titleKey,
-    required this.bodyKey,
-  });
-
-  final IconData icon;
-  final String titleKey;
-  final String bodyKey;
 }

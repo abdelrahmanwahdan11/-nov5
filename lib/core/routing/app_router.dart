@@ -1,59 +1,56 @@
 import 'package:flutter/material.dart';
 
-enum AppEntryState { onboarding, auth, home }
+import '../../controllers/session_controller.dart';
+import '../../core/utils/app_scope.dart';
+import '../../ui/pages/auth/auth_landing_page.dart';
+import '../../ui/pages/auth/forgot_password_page.dart';
+import '../../ui/pages/auth/login_page.dart';
+import '../../ui/pages/auth/signup_page.dart';
+import '../../ui/pages/home_shell.dart';
+import '../../ui/pages/onboarding_page.dart';
 
 class AppRouter {
   static const onboarding = '/onboarding';
-  static const auth = '/auth';
+  static const authLanding = '/auth';
   static const login = '/auth/login';
   static const signup = '/auth/signup';
   static const forgotPassword = '/auth/forgot';
   static const home = '/home';
-  static const wallets = '/wallets';
-  static const insights = '/home/insights';
-  static const statement = '/home/statement';
-  static const calculators = '/home/calculators';
-  static const guides = '/home/guides';
-  static const merchantProfile = '/home/merchant';
-  static const notifications = '/home/notifications';
-  static const help = '/home/help';
-  static const rate = '/home/rate';
 
   static String routeForEntry(AppEntryState state) {
     switch (state) {
       case AppEntryState.onboarding:
         return onboarding;
-      case AppEntryState.auth:
-        return auth;
+      case AppEntryState.authentication:
+        return authLanding;
       case AppEntryState.home:
         return home;
     }
   }
 
-  static PageRoute<T> buildRoute<T>(
-    RouteSettings settings,
-    WidgetBuilder builder,
-  ) {
-    return PageRouteBuilder<T>(
-      settings: settings,
-      pageBuilder: (context, animation, secondaryAnimation) => builder(context),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-          reverseCurve: Curves.easeInCubic,
-        );
-        return FadeTransition(
-          opacity: curved,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.05),
-              end: Offset.zero,
-            ).animate(curved),
-            child: child,
-          ),
-        );
-      },
-    );
+  static Route<dynamic> onGenerate(RouteSettings settings) {
+    switch (settings.name) {
+      case onboarding:
+        return MaterialPageRoute(builder: (_) => const OnboardingPage());
+      case authLanding:
+        return MaterialPageRoute(builder: (_) => const AuthLandingPage());
+      case login:
+        return MaterialPageRoute(builder: (_) => const LoginPage());
+      case signup:
+        return MaterialPageRoute(builder: (_) => const SignupPage());
+      case forgotPassword:
+        return MaterialPageRoute(builder: (_) => const ForgotPasswordPage());
+      case home:
+      default:
+        return MaterialPageRoute(builder: (_) => const HomeShell());
+    }
   }
+
+  static NavigatorState navigator(BuildContext context) {
+    return Navigator.of(context);
+  }
+}
+
+extension NavigatorSession on BuildContext {
+  SessionController get session => AppScope.of(this).sessionController;
 }

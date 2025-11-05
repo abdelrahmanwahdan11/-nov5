@@ -1,146 +1,110 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../../controllers/session_controller.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_scope.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({
-    super.key,
-    required this.sessionController,
-  });
-
-  final SessionController sessionController;
+  const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController _email = TextEditingController();
-  final TextEditingController _password = TextEditingController();
-  final ValueNotifier<bool> _obscure = ValueNotifier<bool>(true);
-  bool _isLoading = false;
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscure = true;
 
   @override
   void dispose() {
-    _email.dispose();
-    _password.dispose();
-    _obscure.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
-      HapticFeedback.heavyImpact();
-      return;
-    }
-    setState(() => _isLoading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    await widget.sessionController.signIn();
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppLocalizations.of(context).translate('welcomeBack'))),
-    );
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+    final scope = AppScope.of(context);
+    final email = _emailController.text.trim();
+    final name = email.split('@').first;
+    scope.profileController.name.value = name.isEmpty ? 'User' : name;
+    scope.sessionController.signIn(name: scope.profileController.name.value);
+    AppRouter.navigator(context)
+        .pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-
+    final l10n = context.l10n;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(t.translate('login')),
-      ),
+      appBar: AppBar(title: Text(l10n.translate('authSignIn'))),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: ListView(
               children: [
-                Text(
-                  t.translate('loginHeadline'),
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ).animate().fadeIn(duration: 360.ms).slideY(begin: 0.2, end: 0),
-                const SizedBox(height: 24),
                 TextFormField(
-                  controller: _email,
+                  controller: _emailController,
+                  decoration: InputDecoration(labelText: l10n.translate('authEmail')),
                   keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: t.translate('email'),
-                  ),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return t.translate('required');
+                    final email = value?.trim() ?? '';
+                    if (email.isEmpty) {
+                      return l10n.translate('authRequiredField');
                     }
-                    if (!value.contains('@')) {
-                      return t.translate('invalidEmail');
+                    if (!email.contains('@') || !email.contains('.')) {
+                      return l10n.translate('authInvalidEmail');
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-                ValueListenableBuilder<bool>(
-                  valueListenable: _obscure,
-                  builder: (context, obscure, _) {
-                    return TextFormField(
-                      controller: _password,
-                      obscureText: obscure,
-                      decoration: InputDecoration(
-                        labelText: t.translate('password'),
-                        suffixIcon: IconButton(
-                          onPressed: () => _obscure.value = !obscure,
-                          icon: Icon(obscure
-                              ? Icons.visibility_rounded
-                              : Icons.visibility_off_rounded),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.length < 6) {
-                          return t.translate('weakPassword');
-                        }
-                        return null;
-                      },
-                    );
+                TextFormField(
+                  controller: _passwordController,
+                  decoration: InputDecoration(
+                    labelText: l10n.translate('authPassword'),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                      tooltip: _obscure
+                          ? l10n.translate('passwordShow')
+                          : l10n.translate('passwordHide'),
+                    ),
+                  ),
+                  obscureText: _obscure,
+                  validator: (value) {
+                    final password = value ?? '';
+                    if (password.isEmpty) {
+                      return l10n.translate('authRequiredField');
+                    }
+                    if (password.length < 6) {
+                      return l10n.translate('authPasswordWeak');
+                    }
+                    return null;
                   },
                 ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _submit,
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(t.translate('login')),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pushNamed(AppRouter.forgotPassword),
+                    child: Text(l10n.translate('authForgotPassword')),
                   ),
                 ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _submit,
+                  style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                  child: Text(l10n.translate('authSignIn')),
+                ),
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(t.translate('noAccountPrompt')),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pushReplacementNamed(AppRouter.signup);
-                      },
-                      child: Text(t.translate('createAccount')),
-                    ),
-                  ],
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).pushReplacementNamed(AppRouter.signup),
+                  child: Text(l10n.translate('authNeedAccount')),
                 ),
               ],
             ),

@@ -1,155 +1,128 @@
-import 'dart:math';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../core/utils/app_constants.dart';
 import '../data/models/wallet_card.dart';
-import '../data/mock/mock_data.dart';
 
 class WalletController {
-  WalletController._(
-    this._prefs,
-    List<WalletCardModel> initialCards,
-    int activeIndex,
-    Set<String> flipped,
-  )   : cardsNotifier = ValueNotifier<List<WalletCardModel>>(initialCards),
-        activeCardIndex = ValueNotifier<int>(activeIndex),
-        flippedCards = ValueNotifier<Set<String>>(flipped);
+  WalletController._(this.cards, this.primaryCardId, this._prefs);
 
+  static const _cardsKey = 'wallet_cards';
+  static const _primaryKey = 'wallet_primary';
+
+  final ValueNotifier<List<WalletCardModel>> cards;
+  final ValueNotifier<String?> primaryCardId;
   final SharedPreferences _prefs;
-  final ValueNotifier<List<WalletCardModel>> cardsNotifier;
-  final ValueNotifier<int> activeCardIndex;
-  final ValueNotifier<Set<String>> flippedCards;
 
   static Future<WalletController> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final storedCards = prefs.getString(AppConstants.prefWalletCards);
-    final storedActive =
-        prefs.getInt(AppConstants.prefWalletActiveIndex) ?? 0;
-    final storedFlipped =
-        prefs.getStringList(AppConstants.prefWalletFlippedCards) ?? <String>[];
-
-    final cards = storedCards != null
-        ? WalletCardModel.decodeList(storedCards)
-        : MockDataGenerator.defaultWalletCards();
-
+    final stored = prefs.getStringList(_cardsKey) ?? <String>[];
+    final cards = stored.map((raw) => _decode(raw)).toList();
+    final primary = prefs.getString(_primaryKey);
     final controller = WalletController._(
+      ValueNotifier(cards),
+      ValueNotifier(primary),
       prefs,
-      cards,
-      min(storedActive, cards.isEmpty ? 0 : cards.length - 1),
-      storedFlipped.toSet(),
     );
-
-    controller.cardsNotifier.addListener(() {
-      final encoded = WalletCardModel.encodeList(controller.cardsNotifier.value);
-      prefs.setString(AppConstants.prefWalletCards, encoded);
+    controller.cards.addListener(() {
+      final encoded = controller.cards.value.map(_encode).toList();
+      prefs.setStringList(_cardsKey, encoded);
+      if (controller.cards.value.isEmpty) {
+        controller.primaryCardId.value = null;
+      }
     });
-
-    controller.activeCardIndex.addListener(() {
-      prefs.setInt(
-        AppConstants.prefWalletActiveIndex,
-        controller.activeCardIndex.value,
-      );
+    controller.primaryCardId.addListener(() {
+      final value = controller.primaryCardId.value;
+      if (value == null) {
+        prefs.remove(_primaryKey);
+      } else {
+        prefs.setString(_primaryKey, value);
+      }
     });
-
-    controller.flippedCards.addListener(() {
-      prefs.setStringList(
-        AppConstants.prefWalletFlippedCards,
-        controller.flippedCards.value.toList(),
-      );
-    });
-
+    if (controller.cards.value.isEmpty) {
+      controller.seedDefaults();
+    }
     return controller;
   }
 
-  void setActiveIndex(int index) {
-    if (index < 0 || index >= cardsNotifier.value.length) return;
-    activeCardIndex.value = index;
-  }
-
-  void toggleFlip(String cardId) {
-    final flipped = Set<String>.from(flippedCards.value);
-    if (flipped.contains(cardId)) {
-      flipped.remove(cardId);
-    } else {
-      flipped.add(cardId);
-    }
-    flippedCards.value = flipped;
+  void seedDefaults() {
+    cards.value = [
+      WalletCardModel(
+        id: 'card-1',
+        label: 'Everyday Card',
+        number: '4892 ****** 1028',
+        balance: 4200.75,
+        currency: 'USD',
+        colors: const [Color(0xFF2BAA7D), Color(0xFF16302B)],
+      ),
+      WalletCardModel(
+        id: 'card-2',
+        label: 'Travel Jar',
+        number: '5210 ****** 8841',
+        balance: 1800.00,
+        currency: 'USD',
+        colors: const [Color(0xFF7D2BAA), Color(0xFF2B4EAA)],
+      ),
+    ];
+    primaryCardId.value = cards.value.first.id;
   }
 
   void addCard(WalletCardModel card) {
-    final cards = List<WalletCardModel>.from(cardsNotifier.value)..add(card);
-    cardsNotifier.value = cards;
-    activeCardIndex.value = cards.length - 1;
+    cards.value = [...cards.value, card];
+    primaryCardId.value ??= card.id;
   }
 
-  WalletCardModel composeCard({
-    required String title,
-    required double balance,
-    required String currency,
-    required String network,
-    required String holderName,
-  }) {
-    final random = Random();
-    final digits = List.generate(4, (_) => random.nextInt(9000) + 1000).join(' ');
-    final expiryMonth = (random.nextInt(12) + 1).toString().padLeft(2, '0');
-    final expiryYear = (DateTime.now().year + 2 + random.nextInt(5)).toString().substring(2);
-    final gradient = AppConstants
-        .walletGradients[random.nextInt(AppConstants.walletGradients.length)];
+  void removeCard(String id) {
+    cards.value = cards.value.where((element) => element.id != id).toList();
+    if (primaryCardId.value == id) {
+      primaryCardId.value = cards.value.isEmpty ? null : cards.value.first.id;
+    }
+  }
 
+  void makePrimary(String id) {
+    if (cards.value.any((element) => element.id == id)) {
+      primaryCardId.value = id;
+    }
+  }
+
+  void reorder(int oldIndex, int newIndex) {
+    final list = [...cards.value];
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+    cards.value = list;
+  }
+
+  static WalletCardModel _decode(String raw) {
+    final data = jsonDecode(raw) as Map<String, dynamic>;
     return WalletCardModel(
-      id: 'wallet_${DateTime.now().millisecondsSinceEpoch}',
-      title: title,
-      holderName: holderName,
-      cardNumber: digits,
-      balance: balance,
-      currency: currency,
-      gradient: gradient,
-      expiry: '$expiryMonth/$expiryYear',
-      network: network,
+      id: data['id'] as String,
+      label: data['label'] as String,
+      number: data['number'] as String,
+      balance: (data['balance'] as num).toDouble(),
+      currency: data['currency'] as String,
+      colors: (data['colors'] as List<dynamic>)
+          .map((value) => Color(value as int))
+          .toList(),
     );
   }
 
-  void updateBalance(String cardId, double delta) {
-    final cards = cardsNotifier.value.map((card) {
-      if (card.id == cardId) {
-        return card.copyWith(balance: (card.balance + delta).clamp(0, 999999));
-      }
-      return card;
-    }).toList();
-    cardsNotifier.value = cards;
-  }
-
-  void removeCard(String cardId) {
-    final cards = List<WalletCardModel>.from(cardsNotifier.value)
-      ..removeWhere((card) => card.id == cardId);
-    cardsNotifier.value = cards;
-    if (activeCardIndex.value >= cards.length) {
-      activeCardIndex.value = cards.isEmpty ? 0 : cards.length - 1;
-    }
-  }
-
-  void reorderCards(int oldIndex, int newIndex) {
-    final cards = List<WalletCardModel>.from(cardsNotifier.value);
-    if (oldIndex < 0 || oldIndex >= cards.length) {
-      return;
-    }
-    if (newIndex > cards.length) {
-      newIndex = cards.length;
-    }
-    if (newIndex > oldIndex) {
-      newIndex -= 1;
-    }
-    final card = cards.removeAt(oldIndex);
-    cards.insert(newIndex, card);
-    cardsNotifier.value = cards;
-    activeCardIndex.value = newIndex;
+  static String _encode(WalletCardModel card) {
+    return jsonEncode({
+      'id': card.id,
+      'label': card.label,
+      'number': card.number,
+      'balance': card.balance,
+      'currency': card.currency,
+      'colors': card.colors.map((e) => e.value).toList(),
+    });
   }
 
   void dispose() {
-    cardsNotifier.dispose();
-    activeCardIndex.dispose();
-    flippedCards.dispose();
+    cards.dispose();
+    primaryCardId.dispose();
   }
 }

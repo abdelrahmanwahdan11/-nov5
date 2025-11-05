@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../core/localization/app_localizations.dart';
 
@@ -12,78 +10,55 @@ class ForgotPasswordPage extends StatefulWidget {
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController _email = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
 
   @override
   void dispose() {
-    _email.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
   void _submit() {
-    if (!_formKey.currentState!.validate()) {
-      HapticFeedback.vibrate();
-      return;
-    }
-    final t = AppLocalizations.of(context);
+    if (!_formKey.currentState!.validate()) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(t.translate('resetLinkSent'))),
+      SnackBar(content: Text(context.l10n.translate('authSendLink'))),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-
+    final l10n = context.l10n;
     return Scaffold(
-      appBar: AppBar(title: Text(t.translate('forgotPassword'))),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  t.translate('forgotPasswordHeadline'),
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ).animate().fadeIn(duration: 360.ms).slideY(begin: 0.2, end: 0),
-                const SizedBox(height: 12),
-                Text(
-                  t.translate('forgotPasswordBody'),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: _email,
-                  decoration: InputDecoration(labelText: t.translate('email')),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return t.translate('required');
-                    }
-                    if (!value.contains('@')) {
-                      return t.translate('invalidEmail');
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _submit,
-                    child: Text(t.translate('sendResetLink')),
-                  ),
-                ),
-              ],
-            ),
+      appBar: AppBar(title: Text(l10n.translate('authResetPassword'))),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _emailController,
+                decoration: InputDecoration(labelText: l10n.translate('authEmail')),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  final email = value?.trim() ?? '';
+                  if (email.isEmpty) {
+                    return l10n.translate('authRequiredField');
+                  }
+                  if (!email.contains('@') || !email.contains('.')) {
+                    return l10n.translate('authInvalidEmail');
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _submit,
+                style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                child: Text(l10n.translate('authSendLink')),
+              ),
+            ],
           ),
         ),
       ),

@@ -1,68 +1,53 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 
 class AppLocalizations {
-  AppLocalizations(this.locale);
+  AppLocalizations(this.locale, this._values);
 
   final Locale locale;
-  late Map<String, String> _strings;
+  final Map<String, dynamic> _values;
+
+  static const supportedLocales = [Locale('en'), Locale('ar')];
 
   static const LocalizationsDelegate<AppLocalizations> delegate =
       _AppLocalizationsDelegate();
 
-  static const supportedLocales = [Locale('en'), Locale('ar')];
-
-  static Map<String, String>? _englishFallback;
-
-  static Future<void> _ensureFallbackLoaded() async {
-    if (_englishFallback != null) {
-      return;
-    }
-    final data = await rootBundle.loadString('assets/l10n/app_en.arb');
-    final Map<String, dynamic> decoded = json.decode(data) as Map<String, dynamic>;
-    _englishFallback = decoded.map(
-      (key, value) => MapEntry(key, value.toString()),
-    );
+  static Future<AppLocalizations> load(Locale locale) async {
+    final languageCode = AppLocalizations._canonicalLanguage(locale.languageCode);
+    final path = 'assets/l10n/app_\${languageCode}.arb';
+    final raw = await rootBundle.loadString(path).catchError((_) async {
+      return await rootBundle.loadString('assets/l10n/app_en.arb');
+    });
+    final data = jsonDecode(raw) as Map<String, dynamic>;
+    return AppLocalizations(Locale(languageCode), data);
   }
 
-  static Future<AppLocalizations> load(Locale locale) async {
-    await _ensureFallbackLoaded();
-    final localization = AppLocalizations(locale);
-    final languageCode = locale.languageCode.toLowerCase();
-
-    if (languageCode == 'en') {
-      localization._strings = Map<String, String>.from(_englishFallback!);
-      return localization;
-    }
-
-    final data = await rootBundle.loadString('assets/l10n/app_$languageCode.arb');
-    final Map<String, dynamic> decoded = json.decode(data) as Map<String, dynamic>;
-    final localizedStrings = decoded.map(
-      (key, value) => MapEntry(key, value.toString()),
-    );
-
-    localization._strings = {
-      ..._englishFallback!,
-      ...localizedStrings,
-    };
-
-    return localization;
+  static String _canonicalLanguage(String code) {
+    return supportedLocales.map((locale) => locale.languageCode).contains(code)
+        ? code
+        : 'en';
   }
 
   static AppLocalizations of(BuildContext context) {
-    return Localizations.of<AppLocalizations>(context, AppLocalizations)!;
+    final result = Localizations.of<AppLocalizations>(context, AppLocalizations);
+    assert(result != null, 'No AppLocalizations found in context');
+    return result!;
   }
 
   String translate(String key, {Map<String, String>? params}) {
-    var value = _strings[key] ?? key;
-    if (params != null && params.isNotEmpty) {
-      params.forEach((placeholder, replacement) {
-        value = value.replaceAll('{$placeholder}', replacement);
-      });
+    final value = _values[key];
+    if (value is! String) {
+      return key;
     }
-    return value;
+    if (params == null || params.isEmpty) {
+      return value;
+    }
+    return params.entries.fold<String>(value, (current, entry) {
+      return current.replaceAll('{\${entry.key}}', entry.value);
+    });
   }
 }
 
@@ -71,13 +56,21 @@ class _AppLocalizationsDelegate
   const _AppLocalizationsDelegate();
 
   @override
-  bool isSupported(Locale locale) =>
-      ['en', 'ar'].contains(locale.languageCode.toLowerCase());
+  bool isSupported(Locale locale) {
+    return AppLocalizations.supportedLocales
+        .map((e) => e.languageCode)
+        .contains(locale.languageCode);
+  }
 
   @override
-  Future<AppLocalizations> load(Locale locale) =>
-      AppLocalizations.load(locale);
+  Future<AppLocalizations> load(Locale locale) {
+    return AppLocalizations.load(locale);
+  }
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
+}
+
+extension LocalizationExtension on BuildContext {
+  AppLocalizations get l10n => AppLocalizations.of(this);
 }

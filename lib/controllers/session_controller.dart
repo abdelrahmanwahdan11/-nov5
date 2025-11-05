@@ -1,142 +1,113 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../core/routing/app_router.dart';
-import '../core/utils/app_constants.dart';
+enum AppEntryState { onboarding, authentication, home }
+
+enum AuthState { guest, authenticated, unauthenticated }
 
 class SessionController {
   SessionController._(
-    this._prefs,
-    AppEntryState initialState,
-    bool isGuest,
-    bool isAuthenticated,
-    bool hasSeenCoach,
-    bool privacyEnabled,
-  )   : entryState = ValueNotifier<AppEntryState>(initialState),
-        isGuestNotifier = ValueNotifier<bool>(isGuest),
-        showCoachNotifier = ValueNotifier<bool>(!hasSeenCoach),
-        privacyModeNotifier = ValueNotifier<bool>(privacyEnabled),
-        _isAuthenticated = isAuthenticated,
-        _hasSeenCoach = hasSeenCoach;
+    this.entryState,
+    this.authState,
+    this.displayName,
+    this.privacyMode,
+    this.tutorialSeen,
+  );
 
-  final SharedPreferences _prefs;
+  static const _onboardingKey = 'seen_onboarding';
+  static const _authKey = 'auth_state';
+  static const _displayNameKey = 'display_name';
+  static const _privacyKey = 'privacy_mode';
+  static const _tutorialKey = 'tutorial_seen';
+
   final ValueNotifier<AppEntryState> entryState;
-  final ValueNotifier<bool> isGuestNotifier;
-  final ValueNotifier<bool> showCoachNotifier;
-  bool _isAuthenticated;
-  bool _hasSeenCoach;
-  final ValueNotifier<bool> privacyModeNotifier;
+  final ValueNotifier<AuthState> authState;
+  final ValueNotifier<String> displayName;
+  final ValueNotifier<bool> privacyMode;
+  final ValueNotifier<bool> tutorialSeen;
 
   static Future<SessionController> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final seenOnboarding =
-        prefs.getBool(AppConstants.prefSeenOnboarding) ?? false;
-    final isGuest = prefs.getBool(AppConstants.prefIsGuest) ?? false;
-    final isAuthenticated =
-        prefs.getBool(AppConstants.prefIsAuthenticated) ?? false;
-    final hasSeenCoach = prefs.getBool(AppConstants.prefSeenCoach) ?? false;
-    final privacyEnabled = prefs.getBool(AppConstants.prefPrivacyMode) ?? false;
-
-    final initialState = !seenOnboarding
+    final seenOnboarding = prefs.getBool(_onboardingKey) ?? false;
+    final auth = prefs.getString(_authKey);
+    final displayName = prefs.getString(_displayNameKey) ?? 'Guest';
+    final privacy = prefs.getBool(_privacyKey) ?? false;
+    final tutorial = prefs.getBool(_tutorialKey) ?? false;
+    final authState = _decodeAuthState(auth);
+    final entry = !seenOnboarding
         ? AppEntryState.onboarding
-        : (isGuest || isAuthenticated)
-            ? AppEntryState.home
-            : AppEntryState.auth;
-
-    return SessionController._(
-      prefs,
-      initialState,
-      isGuest,
-      isAuthenticated,
-      hasSeenCoach,
-      privacyEnabled,
+        : (authState == AuthState.authenticated ? AppEntryState.home : AppEntryState.authentication);
+    final controller = SessionController._(
+      ValueNotifier(entry),
+      ValueNotifier(authState),
+      ValueNotifier(displayName),
+      ValueNotifier(privacy),
+      ValueNotifier(tutorial),
     );
+    controller.authState.addListener(() {
+      prefs.setString(_authKey, controller.authState.value.name);
+      prefs.setBool(_onboardingKey, true);
+      controller.entryState.value = controller.authState.value == AuthState.authenticated
+          ? AppEntryState.home
+          : AppEntryState.authentication;
+    });
+    controller.entryState.addListener(() {
+      if (controller.entryState.value == AppEntryState.home) {
+        prefs.setBool(_onboardingKey, true);
+      }
+    });
+    controller.displayName.addListener(() {
+      prefs.setString(_displayNameKey, controller.displayName.value);
+    });
+    controller.privacyMode.addListener(() {
+      prefs.setBool(_privacyKey, controller.privacyMode.value);
+    });
+    controller.tutorialSeen.addListener(() {
+      prefs.setBool(_tutorialKey, controller.tutorialSeen.value);
+    });
+    return controller;
   }
 
-  bool get isGuest => isGuestNotifier.value;
-
-  Future<void> markOnboardingSeen() async {
-    await _prefs.setBool(AppConstants.prefSeenOnboarding, true);
-    if (_isAuthenticated || isGuest) {
-      entryState.value = AppEntryState.home;
-    } else {
-      entryState.value = AppEntryState.auth;
+  static AuthState _decodeAuthState(String? stored) {
+    switch (stored) {
+      case 'authenticated':
+        return AuthState.authenticated;
+      case 'guest':
+        return AuthState.guest;
+      default:
+        return AuthState.unauthenticated;
     }
   }
 
-  Future<void> continueAsGuest() async {
-    await _prefs.setBool(AppConstants.prefSeenOnboarding, true);
-    await _prefs.setBool(AppConstants.prefIsGuest, true);
-    await _prefs.setBool(AppConstants.prefIsAuthenticated, false);
-    _isAuthenticated = false;
-    isGuestNotifier.value = true;
-    if (!_hasSeenCoach) {
-      showCoachNotifier.value = true;
-    }
-    entryState.value = AppEntryState.home;
+  void completeOnboarding() {
+    entryState.value = authState.value == AuthState.authenticated
+        ? AppEntryState.home
+        : AppEntryState.authentication;
   }
 
-  Future<void> signIn() async {
-    await _prefs.setBool(AppConstants.prefSeenOnboarding, true);
-    await _prefs.setBool(AppConstants.prefIsAuthenticated, true);
-    await _prefs.setBool(AppConstants.prefIsGuest, false);
-    _isAuthenticated = true;
-    isGuestNotifier.value = false;
-    if (!_hasSeenCoach) {
-      showCoachNotifier.value = true;
-    }
-    entryState.value = AppEntryState.home;
+  void signIn({required String name}) {
+    displayName.value = name;
+    authState.value = AuthState.authenticated;
   }
 
-  Future<void> signOut() async {
-    _isAuthenticated = false;
-    isGuestNotifier.value = false;
-    showCoachNotifier.value = false;
-    await _prefs.setBool(AppConstants.prefIsAuthenticated, false);
-    await _prefs.setBool(AppConstants.prefIsGuest, false);
-    entryState.value = AppEntryState.auth;
+  void continueAsGuest() {
+    displayName.value = 'Guest';
+    authState.value = AuthState.guest;
   }
 
-  Future<void> resetOnboarding() async {
-    await _prefs.setBool(AppConstants.prefSeenOnboarding, false);
-    entryState.value = AppEntryState.onboarding;
+  void signOut() {
+    authState.value = AuthState.unauthenticated;
   }
 
-  Future<void> markCoachSeen() async {
-    if (_hasSeenCoach) {
-      showCoachNotifier.value = false;
-      return;
-    }
-    _hasSeenCoach = true;
-    showCoachNotifier.value = false;
-    await _prefs.setBool(AppConstants.prefSeenCoach, true);
-  }
-
-  void requestCoachReveal() {
-    _hasSeenCoach = false;
-    showCoachNotifier.value = true;
-    _prefs.setBool(AppConstants.prefSeenCoach, false);
-  }
-
-  bool get hasSeenCoach => _hasSeenCoach;
-
-  bool get hasSeenOnboarding =>
-      _prefs.getBool(AppConstants.prefSeenOnboarding) ?? false;
-
-  bool get privacyEnabled => privacyModeNotifier.value;
-
-  Future<void> setPrivacyMode(bool enabled) async {
-    if (privacyModeNotifier.value == enabled) {
-      return;
-    }
-    privacyModeNotifier.value = enabled;
-    await _prefs.setBool(AppConstants.prefPrivacyMode, enabled);
+  void markTutorialSeen() {
+    tutorialSeen.value = true;
   }
 
   void dispose() {
     entryState.dispose();
-    isGuestNotifier.dispose();
-    showCoachNotifier.dispose();
-    privacyModeNotifier.dispose();
+    authState.dispose();
+    displayName.dispose();
+    privacyMode.dispose();
+    tutorialSeen.dispose();
   }
 }

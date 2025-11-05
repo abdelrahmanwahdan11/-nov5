@@ -3,65 +3,75 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../core/utils/app_constants.dart';
 import '../data/models/budget.dart';
-import '../data/mock/mock_data.dart';
 
 class BudgetsController {
-  BudgetsController._(this.budgetsNotifier);
+  BudgetsController._(this.budgets, this._prefs);
 
-  final ValueNotifier<List<BudgetModel>> budgetsNotifier;
+  static const _budgetsKey = 'budgets';
+
+  final ValueNotifier<List<BudgetModel>> budgets;
+  final SharedPreferences _prefs;
 
   static Future<BudgetsController> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final stored = prefs.getStringList(AppConstants.prefBudgets);
-    final budgets = stored == null || stored.isEmpty
-        ? MockDataGenerator.defaultBudgets()
-        : stored
-            .map((item) =>
-                BudgetModel.fromMap(jsonDecode(item) as Map<String, dynamic>))
-            .toList();
-
-    return BudgetsController._(ValueNotifier<List<BudgetModel>>(budgets));
+    final stored = prefs.getStringList(_budgetsKey) ?? <String>[];
+    final budgets = stored.map((raw) => _decode(raw)).toList();
+    final controller = BudgetsController._(ValueNotifier(budgets), prefs);
+    controller.budgets.addListener(() {
+      prefs.setStringList(
+        _budgetsKey,
+        controller.budgets.value.map(_encode).toList(),
+      );
+    });
+    if (controller.budgets.value.isEmpty) {
+      controller.seedDefaults();
+    }
+    return controller;
   }
 
-  Future<void> addBudget(BudgetModel budget) async {
-    final items = [...budgetsNotifier.value, budget];
-    budgetsNotifier.value = items;
-    await _persist();
+  void seedDefaults() {
+    budgets.value = [
+      BudgetModel(id: 'food', label: 'Food', limit: 600, spent: 320),
+      BudgetModel(id: 'travel', label: 'Travel', limit: 400, spent: 90),
+    ];
   }
 
-  Future<void> updateBudget(BudgetModel budget) async {
-    final items = budgetsNotifier.value
-        .map((b) => b.id == budget.id ? budget : b)
-        .toList();
-    budgetsNotifier.value = items;
-    await _persist();
+  void upsert(BudgetModel budget) {
+    final list = [...budgets.value];
+    final index = list.indexWhere((element) => element.id == budget.id);
+    if (index >= 0) {
+      list[index] = budget;
+    } else {
+      list.add(budget);
+    }
+    budgets.value = list;
   }
 
-  Future<void> deleteBudget(String id) async {
-    final items = budgetsNotifier.value.where((b) => b.id != id).toList();
-    budgetsNotifier.value = items;
-    await _persist();
+  void delete(String id) {
+    budgets.value = budgets.value.where((element) => element.id != id).toList();
   }
 
-  Future<void> updateSpent(String id, double spent) async {
-    final items = budgetsNotifier.value
-        .map((b) => b.id == id ? b.copyWith(spent: spent) : b)
-        .toList();
-    budgetsNotifier.value = items;
-    await _persist();
+  static BudgetModel _decode(String raw) {
+    final data = jsonDecode(raw) as Map<String, dynamic>;
+    return BudgetModel(
+      id: data['id'] as String,
+      label: data['label'] as String,
+      limit: (data['limit'] as num).toDouble(),
+      spent: (data['spent'] as num).toDouble(),
+    );
   }
 
-  Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
-    final encoded = budgetsNotifier.value
-        .map((budget) => jsonEncode(budget.toMap()))
-        .toList();
-    await prefs.setStringList(AppConstants.prefBudgets, encoded);
+  static String _encode(BudgetModel budget) {
+    return jsonEncode({
+      'id': budget.id,
+      'label': budget.label,
+      'limit': budget.limit,
+      'spent': budget.spent,
+    });
   }
 
   void dispose() {
-    budgetsNotifier.dispose();
+    budgets.dispose();
   }
 }

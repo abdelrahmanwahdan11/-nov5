@@ -1,209 +1,221 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
-import '../../../controllers/session_controller.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/routing/app_router.dart';
+import '../../../core/utils/app_scope.dart';
 
 class SignupPage extends StatefulWidget {
-  const SignupPage({
-    super.key,
-    required this.sessionController,
-  });
-
-  final SessionController sessionController;
+  const SignupPage({super.key});
 
   @override
   State<SignupPage> createState() => _SignupPageState();
 }
 
 class _SignupPageState extends State<SignupPage> {
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController _name = TextEditingController();
-  final TextEditingController _email = TextEditingController();
-  final TextEditingController _password = TextEditingController();
-  final TextEditingController _confirmPassword = TextEditingController();
-  final ValueNotifier<bool> _obscure = ValueNotifier<bool>(true);
-  final ValueNotifier<double> _strength = ValueNotifier<double>(0);
-  bool _isLoading = false;
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
+
+  double get _strength {
+    final password = _passwordController.text;
+    double score = 0;
+    if (password.length >= 6) score += 0.3;
+    if (RegExp(r'[A-Z]').hasMatch(password)) score += 0.2;
+    if (RegExp(r'[0-9]').hasMatch(password)) score += 0.2;
+    if (RegExp(r'[!@#%^&*()]').hasMatch(password)) score += 0.3;
+    return score.clamp(0, 1).toDouble();
+  }
 
   @override
   void dispose() {
-    _name.dispose();
-    _email.dispose();
-    _password.dispose();
-    _confirmPassword.dispose();
-    _obscure.dispose();
-    _strength.dispose();
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _confirmController.dispose();
     super.dispose();
   }
 
-  void _updateStrength(String value) {
-    double score = 0;
-    if (value.length >= 6) score += 0.3;
-    if (RegExp(r'[A-Z]').hasMatch(value)) score += 0.3;
-    if (RegExp(r'[0-9]').hasMatch(value)) score += 0.2;
-    if (RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) score += 0.2;
-    _strength.value = score.clamp(0, 1);
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
-      HapticFeedback.heavyImpact();
-      return;
-    }
-    setState(() => _isLoading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 700));
-    await widget.sessionController.signIn();
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(AppLocalizations.of(context).translate('accountCreated'))),
-    );
+  void _submit() {
+    if (!_formKey.currentState!.validate()) return;
+    final scope = AppScope.of(context);
+    scope.profileController.name.value = _nameController.text.trim();
+    scope.profileController.phone.value = _phoneController.text.trim();
+    scope.sessionController.signIn(name: scope.profileController.name.value);
+    AppRouter.navigator(context)
+        .pushNamedAndRemoveUntil(AppRouter.home, (route) => false);
   }
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
+    final l10n = context.l10n;
     final theme = Theme.of(context);
-
     return Scaffold(
-      appBar: AppBar(title: Text(t.translate('createAccount'))),
+      appBar: AppBar(title: Text(l10n.translate('authSignUp'))),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: ListView(
               children: [
-                Text(
-                  t.translate('signupHeadline'),
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ).animate().fadeIn(duration: 360.ms).slideY(begin: 0.2, end: 0),
-                const SizedBox(height: 24),
                 TextFormField(
-                  controller: _name,
-                  decoration: InputDecoration(labelText: t.translate('fullName')),
+                  controller: _nameController,
+                  decoration: InputDecoration(labelText: l10n.translate('authName')),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return t.translate('required');
+                    if ((value ?? '').trim().isEmpty) {
+                      return l10n.translate('authRequiredField');
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: _email,
+                  controller: _emailController,
+                  decoration: InputDecoration(labelText: l10n.translate('authEmail')),
                   keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(labelText: t.translate('email')),
                   validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return t.translate('required');
+                    final email = value?.trim() ?? '';
+                    if (email.isEmpty) {
+                      return l10n.translate('authRequiredField');
                     }
-                    if (!value.contains('@')) {
-                      return t.translate('invalidEmail');
+                    if (!email.contains('@') || !email.contains('.')) {
+                      return l10n.translate('authInvalidEmail');
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 16),
-                ValueListenableBuilder<bool>(
-                  valueListenable: _obscure,
-                  builder: (context, obscure, _) {
-                    return TextFormField(
-                      controller: _password,
-                      obscureText: obscure,
-                      onChanged: _updateStrength,
-                      decoration: InputDecoration(
-                        labelText: t.translate('password'),
-                        suffixIcon: IconButton(
-                          onPressed: () => _obscure.value = !obscure,
-                          icon: Icon(
-                            obscure
-                                ? Icons.visibility_rounded
-                                : Icons.visibility_off_rounded,
+                TextFormField(
+                  controller: _phoneController,
+                  decoration: InputDecoration(labelText: l10n.translate('authPhone')),
+                  keyboardType: TextInputType.phone,
+                  validator: (value) {
+                    final phone = value?.trim() ?? '';
+                    if (phone.isEmpty) {
+                      return l10n.translate('authRequiredField');
+                    }
+                    if (phone.length < 7) {
+                      return l10n.translate('authInvalidPhone');
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _passwordController,
+                  builder: (context, value, _) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextFormField(
+                          controller: _passwordController,
+                          decoration: InputDecoration(
+                            labelText: l10n.translate('authPassword'),
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                  _obscurePassword ? Icons.visibility : Icons.visibility_off),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            ),
                           ),
+                          obscureText: _obscurePassword,
+                          validator: (value) {
+                            final password = value ?? '';
+                            if (password.isEmpty) {
+                              return l10n.translate('authRequiredField');
+                            }
+                            if (password.length < 6) {
+                              return l10n.translate('authPasswordWeak');
+                            }
+                            return null;
+                          },
                         ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.length < 6) {
-                          return t.translate('weakPassword');
-                        }
-                        return null;
-                      },
+                        const SizedBox(height: 8),
+                        _StrengthMeter(strength: _strength, theme: theme, l10n: l10n),
+                      ],
                     );
                   },
                 ),
-                const SizedBox(height: 12),
-                ValueListenableBuilder<double>(
-                  valueListenable: _strength,
-                  builder: (context, strength, _) {
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: LinearProgressIndicator(
-                        value: strength,
-                        backgroundColor:
-                            theme.colorScheme.primary.withOpacity(0.15),
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          theme.colorScheme.primary,
-                        ),
-                        minHeight: 8,
-                      ),
-                    ).animate().fadeIn(duration: 280.ms);
-                  },
-                ),
                 const SizedBox(height: 16),
                 TextFormField(
-                  controller: _confirmPassword,
-                  obscureText: true,
-                  decoration:
-                      InputDecoration(labelText: t.translate('confirmPassword')),
+                  controller: _confirmController,
+                  decoration: InputDecoration(
+                    labelText: l10n.translate('authConfirmPassword'),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscureConfirm ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                    ),
+                  ),
+                  obscureText: _obscureConfirm,
                   validator: (value) {
-                    if (value != _password.text) {
-                      return t.translate('passwordMismatch');
+                    if (value != _passwordController.text) {
+                      return l10n.translate('authPasswordMismatch');
                     }
                     return null;
                   },
                 ),
                 const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _submit,
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(t.translate('createAccount')),
-                  ),
+                ElevatedButton(
+                  onPressed: _submit,
+                  style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                  child: Text(l10n.translate('authSignUp')),
                 ),
                 const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(t.translate('haveAccountPrompt')),
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context)
-                            .pushReplacementNamed(AppRouter.login);
-                      },
-                      child: Text(t.translate('login')),
-                    ),
-                  ],
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).pushReplacementNamed(AppRouter.login),
+                  child: Text(l10n.translate('authHaveAccount')),
                 ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StrengthMeter extends StatelessWidget {
+  const _StrengthMeter({
+    required this.strength,
+    required this.theme,
+    required this.l10n,
+  });
+
+  final double strength;
+  final ThemeData theme;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    String label;
+    if (strength < 0.4) {
+      color = Colors.red;
+      label = l10n.translate('authPasswordWeak');
+    } else if (strength < 0.7) {
+      color = Colors.orange;
+      label = l10n.translate('authPasswordMedium');
+    } else {
+      color = Colors.green;
+      label = l10n.translate('authPasswordStrong');
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        LinearProgressIndicator(
+          value: strength,
+          minHeight: 6,
+          backgroundColor: theme.colorScheme.surfaceVariant,
+          valueColor: AlwaysStoppedAnimation<Color>(color),
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: theme.textTheme.bodySmall?.copyWith(color: color)),
+      ],
     );
   }
 }

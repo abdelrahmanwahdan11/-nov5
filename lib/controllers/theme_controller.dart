@@ -3,50 +3,39 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../core/utils/app_constants.dart';
-
 class ThemeController {
-  ThemeController._(this._prefs, ThemeMode initialMode, Color primary)
-      : themeMode = ValueNotifier<ThemeMode>(initialMode),
-        primaryColor = ValueNotifier<Color>(primary);
+  ThemeController._(this.themeMode, this.primaryColor);
 
-  final SharedPreferences _prefs;
+  static const _themeModeKey = 'theme_mode';
+  static const _primaryColorKey = 'primary_color';
+
   final ValueNotifier<ThemeMode> themeMode;
   final ValueNotifier<Color> primaryColor;
 
   static Future<ThemeController> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final storedMode = prefs.getString(AppConstants.prefThemeMode);
-    final storedColor = prefs.getInt(AppConstants.prefPrimaryColor);
-
-    final themeMode = ThemeMode.values.firstWhere(
-      (mode) => mode.name == storedMode,
+    final themeValue = prefs.getString(_themeModeKey);
+    final primaryValue = prefs.getInt(_primaryColorKey);
+    final mode = ThemeMode.values.firstWhere(
+      (element) => element.name == themeValue,
       orElse: () => ThemeMode.system,
     );
-
-    final color = storedColor != null
-        ? Color(storedColor)
-        : AppConstants.primarySwatches.first;
-
-    final controller = ThemeController._(prefs, themeMode, color);
+    final color = primaryValue != null ? Color(primaryValue) : const Color(0xFF2BAA7D);
+    final controller = ThemeController._(
+      ValueNotifier<ThemeMode>(mode),
+      ValueNotifier<Color>(color),
+    );
     controller.themeMode.addListener(() {
-      prefs.setString(AppConstants.prefThemeMode, controller.themeMode.value.name);
+      prefs.setString(_themeModeKey, controller.themeMode.value.name);
     });
     controller.primaryColor.addListener(() {
-      prefs.setInt(AppConstants.prefPrimaryColor, controller.primaryColor.value.value);
+      prefs.setInt(_primaryColorKey, controller.primaryColor.value.value);
     });
     return controller;
   }
 
-  void toggleTheme(ThemeMode mode) {
-    if (themeMode.value != mode) {
-      themeMode.value = mode;
-    }
-  }
-
-  void updatePrimary(Color color) {
-    if (primaryColor.value != color) {
-      primaryColor.value = color;
-    }
+  void dispose() {
+    themeMode.dispose();
+    primaryColor.dispose();
   }
 }
