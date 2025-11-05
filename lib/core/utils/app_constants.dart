@@ -11,6 +11,13 @@ class AppConstants {
   static const String prefSearchHistory = 'search_history';
   static const String prefLastCategoryFilter = 'last_category_filter';
   static const String prefLastTagFilters = 'last_tag_filters';
+  static const String prefWalletCards = 'wallet_cards';
+  static const String prefWalletActiveIndex = 'wallet_active_index';
+  static const String prefWalletFlippedCards = 'wallet_flipped_cards';
+  static const String prefProfileName = 'profile_name';
+  static const String prefProfileTitle = 'profile_title';
+  static const String prefProfileBio = 'profile_bio';
+  static const String prefSeenCoach = 'seen_home_coach';
 
   static const List<Color> primarySwatches = [
     Color(0xFF2BAA7D),

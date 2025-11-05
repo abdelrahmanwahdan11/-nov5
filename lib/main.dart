@@ -6,10 +6,12 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'controllers/budgets_controller.dart';
 import 'controllers/locale_controller.dart';
+import 'controllers/profile_controller.dart';
 import 'controllers/search_controller.dart';
 import 'controllers/session_controller.dart';
 import 'controllers/theme_controller.dart';
 import 'controllers/transactions_controller.dart';
+import 'controllers/wallet_controller.dart';
 import 'core/localization/app_localizations.dart';
 import 'core/routing/app_router.dart';
 import 'core/theme/app_theme.dart';
@@ -19,6 +21,7 @@ import 'ui/pages/auth/forgot_password_page.dart';
 import 'ui/pages/auth/login_page.dart';
 import 'ui/pages/auth/signup_page.dart';
 import 'ui/pages/budgets_page.dart';
+import 'ui/pages/guides_page.dart';
 import 'ui/pages/home_page.dart';
 import 'ui/pages/onboarding_page.dart';
 import 'ui/pages/settings_page.dart';
@@ -33,6 +36,8 @@ Future<void> main() async {
       await SearchController.load(transactionsController.allTransactions);
   final budgetsController = await BudgetsController.load();
   final sessionController = await SessionController.load();
+  final profileController = await ProfileController.load();
+  final walletController = await WalletController.load();
 
   await transactionsController.updateLocale(localeController.locale.value);
 
@@ -43,6 +48,8 @@ Future<void> main() async {
     searchController: searchController,
     budgetsController: budgetsController,
     sessionController: sessionController,
+    profileController: profileController,
+    walletController: walletController,
   ));
 }
 
@@ -55,6 +62,8 @@ class MawaidApp extends StatefulWidget {
     required this.searchController,
     required this.budgetsController,
     required this.sessionController,
+    required this.profileController,
+    required this.walletController,
   });
 
   final ThemeController themeController;
@@ -63,6 +72,8 @@ class MawaidApp extends StatefulWidget {
   final SearchController searchController;
   final BudgetsController budgetsController;
   final SessionController sessionController;
+  final ProfileController profileController;
+  final WalletController walletController;
 
   @override
   State<MawaidApp> createState() => _MawaidAppState();
@@ -93,6 +104,8 @@ class _MawaidAppState extends State<MawaidApp> {
     widget.searchController.dispose();
     widget.budgetsController.dispose();
     widget.sessionController.dispose();
+    widget.profileController.dispose();
+    widget.walletController.dispose();
     super.dispose();
   }
 
@@ -153,6 +166,8 @@ class _MawaidAppState extends State<MawaidApp> {
             searchController: widget.searchController,
             budgetsController: widget.budgetsController,
             sessionController: widget.sessionController,
+            profileController: widget.profileController,
+            walletController: widget.walletController,
           ),
         );
     }
@@ -206,6 +221,8 @@ class _MawaidAppState extends State<MawaidApp> {
                       searchController: widget.searchController,
                       budgetsController: widget.budgetsController,
                       sessionController: widget.sessionController,
+                      profileController: widget.profileController,
+                      walletController: widget.walletController,
                       child: child ?? const SizedBox.shrink(),
                     );
                   },
@@ -228,6 +245,8 @@ class HomeShell extends StatefulWidget {
     required this.searchController,
     required this.budgetsController,
     required this.sessionController,
+    required this.profileController,
+    required this.walletController,
   });
 
   final ThemeController themeController;
@@ -236,6 +255,8 @@ class HomeShell extends StatefulWidget {
   final SearchController searchController;
   final BudgetsController budgetsController;
   final SessionController sessionController;
+  final ProfileController profileController;
+  final WalletController walletController;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -251,12 +272,16 @@ class _HomeShellState extends State<HomeShell> {
         transactionsController: widget.transactionsController,
         budgetsController: widget.budgetsController,
         searchController: widget.searchController,
+        walletController: widget.walletController,
+        sessionController: widget.sessionController,
+        profileController: widget.profileController,
         onOpenBudgets: () => setState(() => _currentIndex = 1),
-        onOpenTransactions: () => setState(() => _currentIndex = 2),
+        onOpenTransactions: () => setState(() => _currentIndex = 3),
       ),
       BudgetsPage(
         budgetsController: widget.budgetsController,
       ),
+      GuidesPage(profileController: widget.profileController),
       TransactionsPage(
         transactionsController: widget.transactionsController,
         searchController: widget.searchController,
@@ -265,6 +290,7 @@ class _HomeShellState extends State<HomeShell> {
         themeController: widget.themeController,
         localeController: widget.localeController,
         sessionController: widget.sessionController,
+        profileController: widget.profileController,
       ),
     ];
 
@@ -309,12 +335,14 @@ class _AnimatedBottomNav extends StatelessWidget {
     final labels = [
       t.translate('navHome'),
       t.translate('navBudgets'),
+      t.translate('navGuides'),
       t.translate('navTransactions'),
       t.translate('navSettings'),
     ];
     final icons = const [
       Icons.dashboard_rounded,
       Icons.account_balance_wallet_rounded,
+      Icons.auto_stories_rounded,
       Icons.receipt_long_rounded,
       Icons.settings_rounded,
     ];

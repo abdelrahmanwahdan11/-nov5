@@ -2,6 +2,7 @@ import 'dart:math';
 
 import '../models/budget.dart';
 import '../models/transaction.dart';
+import '../models/wallet_card.dart';
 
 class MockDataGenerator {
   MockDataGenerator._();
@@ -100,6 +101,44 @@ class MockDataGenerator {
           spent: categories[i]['spent'] as double,
           color: categories[i]['color'] as int,
         ),
+    ];
+  }
+
+  static List<WalletCardModel> defaultWalletCards() {
+    return [
+      WalletCardModel(
+        id: 'wallet_primary',
+        title: 'Everyday Wallet',
+        holderName: 'Laila Youssef',
+        cardNumber: '4581 3289 9912 5541',
+        balance: 4820.75,
+        currency: 'USD',
+        gradient: const [0xFF2BAA7D, 0xFF58C6A3],
+        expiry: '09/27',
+        network: 'VISA',
+      ),
+      WalletCardModel(
+        id: 'wallet_travel',
+        title: 'Travel Stash',
+        holderName: 'Laila Youssef',
+        cardNumber: '5392 1100 8823 9472',
+        balance: 1810.40,
+        currency: 'EUR',
+        gradient: const [0xFF3A7BFF, 0xFF7FA6FF],
+        expiry: '01/28',
+        network: 'Mastercard',
+      ),
+      WalletCardModel(
+        id: 'wallet_savings',
+        title: 'Dream Home Fund',
+        holderName: 'Laila Youssef',
+        cardNumber: '6020 9988 5554 3001',
+        balance: 12650.00,
+        currency: 'AED',
+        gradient: const [0xFF9B5DE5, 0xFFB48BFF],
+        expiry: '12/29',
+        network: 'Amethyst',
+      ),
     ];
   }
 }

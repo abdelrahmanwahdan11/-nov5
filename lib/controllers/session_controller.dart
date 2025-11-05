@@ -10,14 +10,19 @@ class SessionController {
     AppEntryState initialState,
     bool isGuest,
     bool isAuthenticated,
+    bool hasSeenCoach,
   )   : entryState = ValueNotifier<AppEntryState>(initialState),
         isGuestNotifier = ValueNotifier<bool>(isGuest),
-        _isAuthenticated = isAuthenticated;
+        showCoachNotifier = ValueNotifier<bool>(!hasSeenCoach),
+        _isAuthenticated = isAuthenticated,
+        _hasSeenCoach = hasSeenCoach;
 
   final SharedPreferences _prefs;
   final ValueNotifier<AppEntryState> entryState;
   final ValueNotifier<bool> isGuestNotifier;
+  final ValueNotifier<bool> showCoachNotifier;
   bool _isAuthenticated;
+  bool _hasSeenCoach;
 
   static Future<SessionController> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -26,6 +31,7 @@ class SessionController {
     final isGuest = prefs.getBool(AppConstants.prefIsGuest) ?? false;
     final isAuthenticated =
         prefs.getBool(AppConstants.prefIsAuthenticated) ?? false;
+    final hasSeenCoach = prefs.getBool(AppConstants.prefSeenCoach) ?? false;
 
     final initialState = !seenOnboarding
         ? AppEntryState.onboarding
@@ -38,6 +44,7 @@ class SessionController {
       initialState,
       isGuest,
       isAuthenticated,
+      hasSeenCoach,
     );
   }
 
@@ -84,11 +91,30 @@ class SessionController {
     entryState.value = AppEntryState.onboarding;
   }
 
+  Future<void> markCoachSeen() async {
+    if (_hasSeenCoach) {
+      showCoachNotifier.value = false;
+      return;
+    }
+    _hasSeenCoach = true;
+    showCoachNotifier.value = false;
+    await _prefs.setBool(AppConstants.prefSeenCoach, true);
+  }
+
+  void requestCoachReveal() {
+    _hasSeenCoach = false;
+    showCoachNotifier.value = true;
+    _prefs.setBool(AppConstants.prefSeenCoach, false);
+  }
+
+  bool get hasSeenCoach => _hasSeenCoach;
+
   bool get hasSeenOnboarding =>
       _prefs.getBool(AppConstants.prefSeenOnboarding) ?? false;
 
   void dispose() {
     entryState.dispose();
     isGuestNotifier.dispose();
+    showCoachNotifier.dispose();
   }
 }
